@@ -4,6 +4,9 @@
 declare module 'buffer/' {
   export class Buffer {
     length: number;
+    buffer: ArrayBuffer;
+    byteOffset: number;
+    byteLength: number;
     write(
       string: string,
       offset?: number,
