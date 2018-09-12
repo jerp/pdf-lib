@@ -96,6 +96,7 @@
     ],
     "moduleNameMapper": {
       "^core/(.*)": "<rootDir>/src/core/$1",
+      "^fonts/(.*)": "<rootDir>/src/fonts/$1",
       "^utils/(.*)": "<rootDir>/src/utils/$1",
       "^utils": "<rootDir>/src/utils/index.ts"
     },

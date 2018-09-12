@@ -20,6 +20,7 @@
       "core/*": ["src/core/*"],
       "helpers/*": ["src/helpers/*"],
       "utils/*": ["src/utils/*"],
+      "fonts/*": ["src/fonts/*"],
       "utils": ["src/utils/index.ts"]
     }
   },
