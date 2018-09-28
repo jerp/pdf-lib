@@ -16,8 +16,12 @@ const writePdfToTmp = (pdf: Uint8Array) => {
   return path;
 };
 
-const readFont = (font: string) =>
-  fs.readFileSync(`__integration_tests__/assets/fonts/${font}`);
+import { TTFFont } from 'fonts/TTFFont'
+const fontkit = require('fontkit')
+
+const readFont = (font: string, ttf?: boolean) => ttf ?
+  TTFFont.for(fs.readFileSync(`__integration_tests__/assets/fonts/${font}`)) :
+  fontkit.create(fs.readFileSync(`__integration_tests__/assets/fonts/${font}`))
 
 const readImage = (image: string) =>
   fs.readFileSync(`__integration_tests__/assets/images/${image}`);
@@ -27,11 +31,12 @@ const readPdf = (pdf: string) => fs.readFileSync(`test-pdfs/pdf/${pdf}`);
 const assets = {
   fonts: {
     ttf: {
-      ubuntu_r: readFont('ubuntu/Ubuntu-R.ttf'),
-      bio_rhyme_r: readFont('bio_rhyme/BioRhymeExpanded-Regular.ttf'),
-      press_start_2p_r: readFont('press_start_2p/PressStart2P-Regular.ttf'),
-      indie_flower_r: readFont('indie_flower/IndieFlower.ttf'),
-      great_vibes_r: readFont('great_vibes/GreatVibes-Regular.ttf'),
+      ubuntu_r: readFont('ubuntu/Ubuntu-R.ttf', true),
+      bio_rhyme_r: readFont('bio_rhyme/BioRhymeExpanded-Regular.ttf', true),
+      press_start_2p_r: readFont('press_start_2p/PressStart2P-Regular.ttf', true),
+      indie_flower_r: readFont('indie_flower/IndieFlower.ttf', true),
+      great_vibes_r: readFont('great_vibes/GreatVibes-Regular.ttf', true),
+      CharisSIL_r: readFont('CharisSIL/CharisSIL-R.ttf', true),
     },
     otf: {
       fantasque_sans_mono_bi: readFont(

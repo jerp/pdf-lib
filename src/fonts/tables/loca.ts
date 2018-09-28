@@ -13,29 +13,39 @@
  
 import { DataStream, Uint16View, Uint32View } from 'fonts/DataStream'
 import { Table } from 'fonts/tables/Table'
+import { directory } from 'fonts/tables/DirectoryTypes'
 
 export class TableLoca extends Table {
   static tableName: string = 'loca'
   private offsets: Uint16View | Uint32View
-  private subsetOffsets: Uint16View | Uint32View
+  private subsetOffsets: number[] = []
+  private offsetMultiplier: number
   /** returns offset of a glif id */
   get(id: number) {
-    return this.offsets.get(id)
+    return this.offsets.get(id) * this.offsetMultiplier
   }
   get length() {
     return this.offsets.length
   }
-  decode(stream: DataStream, byteLength: number, directory: any) {
-    const short = directory.getTable('head').indexToLocFormat === 0
-    const typedViewClass = short ? Uint16View : Uint32View
-    this.offsets = stream.getTypedView(byteLength / typedViewClass.elemByteLength, typedViewClass)
+  doDecode = (directory: directory) => {
+    const stream = this.sourceStream
+    const shortVersion = directory.head.indexToLocFormat === 0
+    const typedViewClass = shortVersion ? Uint16View : Uint32View
+    this.offsetMultiplier = shortVersion ? 2 : 1
+    this.offsets = stream.getTypedView(stream.byteLength / typedViewClass.elemByteLength, typedViewClass)
   }
+  // must be called after glyf table is encoded
   encode(stream: DataStream, subset: number[]) {
-    const short = subset.length < 0xffff
-    const typedViewClass = short ? Uint16View : Uint32View
-    this.subsetOffsets = stream.setTypedView(subset.length, typedViewClass)
+    if (subset.length < 0xffff) {
+      // The short table version stores the actual offset divided by 2.
+      this.subsetOffsets.forEach(offset => stream.setUint16(offset >>> 1))
+    } else {
+      // Need to update head.indexToLocFormat since it is defaulted to 1
+      stream.save().restore('indexToLocFormat').setInt16(0).restore()
+      this.subsetOffsets.forEach(offset => stream.setUint32(offset))
+    }
   }
   set(id: number, offset: number) {
-    this.subsetOffsets.set(id, offset)
+    this.subsetOffsets[id] = offset
   }
 }

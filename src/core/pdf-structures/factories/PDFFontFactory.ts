@@ -1,62 +1,24 @@
-import { Buffer } from 'buffer/';
-import fontkit from 'fontkit';
 import isNil from 'lodash/isNil';
 import isObject from 'lodash/isObject';
 import isString from 'lodash/isString';
-import range from 'lodash/range';
-import pako from 'pako';
+import { deflate } from 'pako';
+
+import { IFont, EmbededFont, IFontFlagOptions } from 'fonts/EmbededFont'
 
 import PDFDocument from 'core/pdf-document/PDFDocument';
 import {
   PDFArray,
   PDFDictionary,
   PDFIndirectReference,
-  PDFName,
+  PDFName, PDFString,
   PDFNumber,
   PDFRawStream,
+  PDFHexString,
 } from 'core/pdf-objects';
-import { or, setCharAt } from 'utils';
+import { or, bytesToHex, byteToHex2, typedArrayFor } from 'utils';
 import { isInstance, validate } from 'utils/validate';
 
-import PDFObjectIndex from 'core/pdf-document/PDFObjectIndex';
-
-/** @hidden */
-const unsigned32Bit = '00000000000000000000000000000000';
-
-export interface IFontFlagOptions {
-  FixedPitch?: boolean;
-  Serif?: boolean;
-  Symbolic?: boolean;
-  Script?: boolean;
-  Nonsymbolic?: boolean;
-  Italic?: boolean;
-  AllCap?: boolean;
-  SmallCap?: boolean;
-  ForceBold?: boolean;
-}
-
-// TODO: Make sure this works correctly. Setting any flag besides
-//       Nonsymbolic to true seems to screw up the font...
-/*
- * Doing this by bit-twiddling a string, and then parsing it, gets around
- * JavaScript converting the results of bit-shifting ops back into 64-bit integers.
- */
-// prettier-ignore
-/** @hidden */
-const fontFlags = (options: IFontFlagOptions) => {
-  let flags = unsigned32Bit;
-  if (options.FixedPitch)  flags = setCharAt(flags, 32 - 1, '1');
-  if (options.Serif)       flags = setCharAt(flags, 32 - 2, '1');
-  if (options.Symbolic)    flags = setCharAt(flags, 32 - 3, '1');
-  if (options.Script)      flags = setCharAt(flags, 32 - 4, '1');
-  if (options.Nonsymbolic) flags = setCharAt(flags, 32 - 6, '1');
-  if (options.Italic)      flags = setCharAt(flags, 32 - 7, '1');
-  if (options.AllCap)      flags = setCharAt(flags, 32 - 17, '1');
-  if (options.SmallCap)    flags = setCharAt(flags, 32 - 18, '1');
-  if (options.ForceBold)   flags = setCharAt(flags, 32 - 19, '1');
-  return parseInt(flags, 2);
-};
-
+import IPDFFontEncoder from 'core/pdf-structures/factories/PDFFontEncoder';
 /**
  * This Factory supports TrueType and OpenType fonts. Note that the apparent
  * hardcoding of values for OpenType fonts does not actually affect TrueType
@@ -66,132 +28,171 @@ const fontFlags = (options: IFontFlagOptions) => {
  * as this class borrows heavily from:
  * https://github.com/devongovett/pdfkit/blob/e71edab0dd4657b5a767804ba86c94c58d01fbca/lib/font/embedded.coffee
  */
-class PDFFontFactory {
-  static for = (fontData: Uint8Array, flagOptions: IFontFlagOptions) =>
-    new PDFFontFactory(fontData, flagOptions);
+class PDFFontFactory implements IPDFFontEncoder {
+  static for = (font: IFont, flagOptions: IFontFlagOptions) =>
+    new PDFFontFactory(font, flagOptions);
 
-  font: any;
+  embededFont: EmbededFont;
   scale: number;
-  fontData: Uint8Array;
   flagOptions: IFontFlagOptions;
 
-  constructor(fontData: Uint8Array, flagOptions: IFontFlagOptions) {
-    validate(
-      fontData,
-      isInstance(Uint8Array),
-      '"fontData" must be a Uint8Array',
-    );
+  constructor(font: IFont, flagOptions: IFontFlagOptions) {
+    // validate(
+    //   font,
+    //   isInstance(IFont),
+    //   '"font" must be a Font instance',
+    // );
     validate(flagOptions, isObject, '"flagOptions" must be an Object');
 
-    // This has to work in browser & Node JS environments. And, unfortunately,
-    // the "fontkit" package makes use of Node "Buffer" objects, instead of
-    // standard JS typed arrays. So, for now we'll just use the "buffer" package
-    // to convert the "data" to a "Buffer" object that "fontkit" can work with.
-    const dataBuffer = Buffer.from(fontData as any);
-
-    this.fontData = fontData;
     this.flagOptions = flagOptions;
-    this.font = fontkit.create(dataBuffer);
-    this.scale = 1000 / this.font.unitsPerEm;
+    this.embededFont = EmbededFont.for(font);
+    this.scale = 1000 / this.embededFont.unitsPerEm;
   }
-
+  
+  encodeText = (text: string): PDFHexString => PDFHexString.fromBytes(this.embededFont.encodeText(text));
   /*
-  TODO: This is hardcoded for "Simple Fonts" with non-modified encodings, need
-  to broaden support to other fonts.
+    Embed a subset of this font into a document
   */
   embedFontIn = (
     pdfDoc: PDFDocument,
     name?: string,
+    subsetting: boolean = false
   ): PDFIndirectReference<PDFDictionary> => {
-    validate(
-      pdfDoc,
-      isInstance(PDFDocument),
-      'PDFFontFactory.embedFontIn: "pdfDoc" must be an instance of PDFDocument',
-    );
-    validate(name, or(isString, isNil), '"name" must be a string or undefined');
+    /*
+      A composite font, also called a Type 0 font, is one whose glyphs are obtained from a fontlike object
+      called a CIDFont.
 
-    const randSuffix = `-rand_${Math.floor(Math.random() * 10000)}`;
-    const fontName =
-      name || this.font.postscriptName + randSuffix || 'Font' + randSuffix;
+      When the current font is composite, the text-showing operators shall behave differently than with
+      simple fonts. For simple fonts, each byte of a string to be shown selects one glyph, whereas for
+      composite fonts, a sequence of one or more bytes are decoded to select a glyph from the descendant CIDFont.
 
-    const deflatedFontData = pako.deflate(this.fontData);
-    const fontStreamDict = PDFDictionary.from(
+      A CID-keyed font, then, shall be the combination of a CMap with a CIDFont containing glyph descriptions.
+      It shall be represented as a Type 0 font. It contains an Encoding entry whose value shall be a CMap
+      dictionary, and its DescendantFonts entry shall reference the CIDFont dictionary with which the CMap
+      has been combined.
+    */
+    const fontStream = PDFRawStream.from(PDFDictionary.from(
       {
-        Subtype: PDFName.from('OpenType'),
-        Filter: PDFName.from('FlateDecode'),
-        Length: PDFNumber.fromNumber(deflatedFontData.length),
+        Length: PDFNumber.fromNumber(0),
       },
       pdfDoc.index,
-    );
-    const fontStream = pdfDoc.register(
-      PDFRawStream.from(fontStreamDict, deflatedFontData),
-    );
-
-    const {
-      italicAngle,
-      ascent,
-      descent,
-      capHeight,
-      xHeight,
-      bbox,
-    } = this.font;
-
-    const fontDescriptor = PDFDictionary.from(
+    ), new Uint8Array(0))
+    const embededFontDict = PDFDictionary.from(
       {
         Type: PDFName.from('FontDescriptor'),
-        FontName: PDFName.from(fontName),
-        Flags: PDFNumber.fromNumber(fontFlags(this.flagOptions)),
-        FontBBox: PDFArray.fromArray(
-          [
-            PDFNumber.fromNumber(bbox.minX * this.scale),
-            PDFNumber.fromNumber(bbox.minY * this.scale),
-            PDFNumber.fromNumber(bbox.maxX * this.scale),
-            PDFNumber.fromNumber(bbox.maxY * this.scale),
-          ],
-          pdfDoc.index,
-        ),
-        ItalicAngle: PDFNumber.fromNumber(italicAngle),
-        Ascent: PDFNumber.fromNumber(ascent * this.scale),
-        Descent: PDFNumber.fromNumber(descent * this.scale),
-        CapHeight: PDFNumber.fromNumber((capHeight || ascent) * this.scale),
-        XHeight: PDFNumber.fromNumber((xHeight || 0) * this.scale),
-        // Not sure how to compute/find this, nor is anybody else really:
-        // https://stackoverflow.com/questions/35485179/stemv-value-of-the-truetype-font
-        StemV: PDFNumber.fromNumber(0),
-        FontFile3: fontStream,
+        FontName: PDFName.from(this.embededFont.fontName),
+        Flags: PDFNumber.fromNumber(4 || this.embededFont.flags), // 32 Nonsymboli 4 symbolic
+        FontBBox: PDFArray.fromArray(this.embededFont.fontBBox.map((n: number) => PDFNumber.fromNumber(n*this.scale)), pdfDoc.index),
+        ItalicAngle: PDFNumber.fromNumber(this.embededFont.italicAngle),
+        Ascent: PDFNumber.fromNumber(this.embededFont.ascent*this.scale),
+        Descent: PDFNumber.fromNumber(this.embededFont.descent*this.scale),
+        CapHeight: PDFNumber.fromNumber(this.embededFont.capHeight*this.scale),
+        XHeight: PDFNumber.fromNumber(this.embededFont.xHeight*this.scale),
+        StemV: PDFNumber.fromNumber(0), // StemV
+        FontFile2: pdfDoc.register(fontStream),
       },
       pdfDoc.index,
     );
+    const widthArray = PDFArray.fromArray(<PDFNumber[]>[], pdfDoc.index)
+    const descendantFontDict = PDFDictionary.from(
+      {
+        Type: PDFName.from('Font'),
+        Subtype: PDFName.from('CIDFontType2'),
+        BaseFont: PDFName.from(this.embededFont.fontName),
+        CIDSystemInfo: PDFDictionary.from({
+          Registry: PDFString.fromString('Adobe'),
+          Ordering: PDFString.fromString('Identity'),
+          Supplement: PDFNumber.fromNumber(0),
+        }, pdfDoc.index),
+        // W: widths for the glyphs in the CIDFont - entry example: [ 0 [1400 325 ...] ]
+        W: PDFArray.fromArray([
+          PDFNumber.fromNumber(0),
+          widthArray
+        ], pdfDoc.index),
+        FontDescriptor: pdfDoc.register(embededFontDict),
+      }, pdfDoc.index,
+    )
+    const toUnicodeStream = PDFRawStream.from(
+      PDFDictionary.from({
+        Length: PDFNumber.fromNumber(0),
+      }, pdfDoc.index), new Uint8Array)
+    const widthArrayBytesSize = widthArray.bytesSize
+    widthArray.bytesSize = ():number => {
+      this.embededFont.subsetData.widths.forEach((w,i) => widthArray.array[i] = PDFNumber.fromNumber(w*this.scale))
+      return widthArrayBytesSize()
+    }
+    const fontStreamBytesSize = fontStream.bytesSize
+    const toUnicodeStreamBytesSize = toUnicodeStream.bytesSize
+    // const fontStreamCopyBytesInto = fontStream.copyBytesInto
+    fontStream.bytesSize = ():number => {
+      // TODO fix this uggly dirty pieace
+      // embededFontInfo.data should be calculated only just before writing the PDF
+      fontStream.dictionary.set(PDFName.from('Filter'), PDFName.from('FlateDecode'));
+      const encodedContent = deflate(this.embededFont.subsetData.data)
+      fontStream.dictionary.set('Length', PDFNumber.fromNumber(encodedContent.byteLength))
+      fontStream.content = encodedContent
+      return fontStreamBytesSize()
+    }
 
+    toUnicodeStream.bytesSize = ():number => {
+      // TODO fix this uggly dirty pieace
+      // embededFontInfo.data should be calculated only just before writing the PDF
+      const CMap = this.embededFont.subsetData.CMap
+          // The Identity-H and Identity-V CMaps may be used to refer to glyphs directly by their CIDs when showing a text string
+        /*
+          In addition to displaying text, conforming readers sometimes need to determine the information content
+          of text—that is, its meaning according to some standard character identification as opposed to its rendered
+          appearance. This need arises during operations such as searching, indexing, and exporting of text to other
+          file formats.
+        */
+      const toUnicodeData = typedArrayFor([
+        '/CIDInit /ProcSet findresource begin',
+        '12 dict begin',
+        'begincmap',
+        '/CIDSystemInfo',
+        '<< /Registry (Adobe)',
+        '/Ordering (UCS)',
+        '/Supplement 0',
+        '>> def',
+        '/CMapName /Adobe-Identity-UCS def',
+        '/CMapType 2 def',
+        '1 begincodespacerange',
+        CMap.codespacerange.map((c: number) => `<${byteToHex2(c)}>`).join(' '),
+        'endcodespacerange',
+        '1 beginbfrange',
+        // most compact form for our use case
+        `<0000> <${byteToHex2(CMap.ranges.length)}> [<0000> ${CMap.ranges.map(codePoints => `<${codePoints.map(cp => byteToHex2(cp)).join('')}>`).join(' ')}]`,
+        'endbfrange',
+        // 1 beginbfchar
+        // <3A51> <D840DC3E>
+        // endbfchar
+        'endcmap',
+        'CMapName currentdict /CMap defineresource pop',
+        'end',
+        'end',
+      ].join('\n'))
+      // toUnicodeStream.dictionary.set(PDFName.from('Filter'), PDFName.from('FlateDecode'));
+      // const encodedContent = deflate(toUnicodeData)
+      const encodedContent = toUnicodeData
+      toUnicodeStream.dictionary.set('Length', PDFNumber.fromNumber(encodedContent.length))
+      toUnicodeStream.content = encodedContent
+      const size = toUnicodeStreamBytesSize()
+      // console.log(String.fromCharCode.apply(null, toUnicodeData))
+      return size
+    }
+
+    const fontDict = PDFDictionary.from({
+      Type: PDFName.from('Font'),
+      Subtype: PDFName.from('Type0'),
+      BaseFont: PDFName.from(this.embededFont.fontName),
+      Encoding: PDFName.from('Identity-H'),
+      DescendantFonts: PDFArray.fromArray([pdfDoc.register(descendantFontDict)], pdfDoc.index),
+      ToUnicode: pdfDoc.register(toUnicodeStream),
+    }, pdfDoc.index)
     return pdfDoc.register(
-      PDFDictionary.from(
-        {
-          Type: PDFName.from('Font'),
-          Subtype: PDFName.from('OpenType'),
-          BaseFont: PDFName.from(fontName),
-          FirstChar: PDFNumber.fromNumber(0),
-          LastChar: PDFNumber.fromNumber(255),
-          Widths: this.getWidths(pdfDoc.index),
-          FontDescriptor: pdfDoc.register(fontDescriptor),
-        },
-        pdfDoc.index,
-      ),
+      fontDict,
     );
-  };
-
-  /** @hidden */
-  getWidths = (index: PDFObjectIndex) =>
-    PDFArray.fromArray(
-      range(0, 256)
-        .map(this.getCodePointWidth)
-        .map(PDFNumber.fromNumber),
-      index,
-    );
-
-  getCodePointWidth = (code: number) =>
-    this.font.characterSet.includes(code)
-      ? this.font.glyphForCodePoint(code).advanceWidth * this.scale
-      : 0;
+  }
 }
 
 export default PDFFontFactory;

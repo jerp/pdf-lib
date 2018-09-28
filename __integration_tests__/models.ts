@@ -1,16 +1,18 @@
+import { IFont } from 'fonts/Font'
 export interface ITestAssets {
   fonts: {
     ttf: {
-      ubuntu_r: Uint8Array;
-      bio_rhyme_r: Uint8Array;
-      press_start_2p_r: Uint8Array;
-      indie_flower_r: Uint8Array;
-      great_vibes_r: Uint8Array;
+      ubuntu_r: IFont;
+      bio_rhyme_r: IFont;
+      press_start_2p_r: IFont;
+      indie_flower_r: IFont;
+      great_vibes_r: IFont;
+      CharisSIL_r: IFont;
     };
     otf: {
-      fantasque_sans_mono_bi: Uint8Array;
-      apple_storm_r: Uint8Array;
-      hussar_3d_r: Uint8Array;
+      fantasque_sans_mono_bi: IFont;
+      apple_storm_r: IFont;
+      hussar_3d_r: IFont;
     };
   };
   images: {

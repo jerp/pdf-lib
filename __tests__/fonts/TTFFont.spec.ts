@@ -1,175 +1,302 @@
-import { name } from 'fonts/tables/required'
 import { TTFFont } from 'fonts/TTFFont'
-import { readFileSync } from 'fs'
+import { readFileSync, createWriteStream, writeFileSync } from 'fs'
 
-const testFontFile = (fontFile) => readFileSync(`test-fonts/${fontFile}`)
+import {
+  drawLinesOfText,
+  PDFDocumentFactory,
+  PDFDocumentWriter,
+} from '../../src';
+import {
+  PDFHexString,
+  PDFIndirectReference,
+} from '../../src/core/pdf-objects';
+import { DataStream } from 'fonts/DataStream';
+import { dirname } from 'path';
+
+const testFontFile = (fontFile) => readFileSync(`${__dirname}/../../__integration_tests__/assets/fonts/${fontFile}`)
 
 describe('TTFFont', () => {
   describe('Parses Mini Font', () => {
-    const fontBuffer = testFontFile('CharisSIL-abc.ttf')
+    const fontBuffer = testFontFile('CharisSIL/CharisSIL-abc.ttf')
     const fontData = new Uint8Array(fontBuffer)
     const font = new TTFFont(fontData)
     it('parses head', () => {
-      expect(font.head.version).toBe(1)
-      expect(font.head.fontRevision).toBe(5)
-      expect(font.head.checkSumAdjustment).toBe(400097939)
-      expect(font.head.magicNumber).toBe(1594834165)
-      expect(font.head.flags).toBe(25)
-      expect(font.head.unitsPerEm).toBe(2048)
-      expect(font.head.xMin).toBe(29)
-      expect(font.head.yMin).toBe(-25)
-      expect(font.head.xMax).toBe(1300)
-      expect(font.head.yMax).toBe(1800)
-      expect(font.head.macStyle).toBe(0)
-      expect(font.head.lowestRecPPEM).toBe(9)
-      expect(font.head.fontDirectionHint).toBe(2)
-      expect(font.head.indexToLocFormat).toBe(0)
-      expect(font.head.glyphDataFormat).toBe(0)
+      expect(font.bbox.minX).toBe(29)
+      expect(font.bbox.minY).toBe(-25)
+      expect(font.bbox.maxX).toBe(1300)
+      expect(font.bbox.maxY).toBe(1800)
+      expect(font.__dir__.head.unitsPerEm).toBe(2048)
+      expect(font.__dir__.head.xMin).toBe(29)
+      expect(font.__dir__.head.yMin).toBe(-25)
+      expect(font.__dir__.head.xMax).toBe(1300)
+      expect(font.__dir__.head.yMax).toBe(1800)
+      expect(font.__dir__.head._macStyle).toBe(0)
+      expect(font.__dir__.head.indexToLocFormat).toBe(0)
     })
     it('parses name', () => {
-      expect(font.name.get('fontFamily')).toEqual('Charis SIL')
-      expect(font.name.get('fullName')).toEqual('Charis SIL')
-      expect(font.name.get('fontSubfamily')).toEqual('Regular')
-      expect(font.name.get('postScriptName')).toEqual('CharisSIL')
-      expect(font.name.get('uniqueID')).toEqual('SILInternational: Charis SIL: 2014')
+      expect(font.__dir__.name.get('fontFamily')).toEqual('Charis SIL')
+      expect(font.__dir__.name.get('fullName')).toEqual('Charis SIL')
+      expect(font.__dir__.name.get('fontSubfamily')).toEqual('Regular')
+      expect(font.__dir__.name.get('postScriptName')).toEqual('CharisSIL')
+      expect(font.__dir__.name.get('uniqueID')).toEqual('SILInternational: Charis SIL: 2014')
     })
     it('parses hhea', () => {
-      expect(font.hhea.version).toEqual(1)
-      expect(font.hhea.ascent).toEqual(2450)
-      expect(font.hhea.descent).toEqual(-900)
-      expect(font.hhea.lineGap).toEqual(0)
-      expect(font.hhea.advanceWidthMax).toEqual(1400)
-      expect(font.hhea.minLeftSideBearing).toEqual(29)
-      expect(font.hhea.minRightSideBearing).toEqual(34)
-      expect(font.hhea.xMaxExtent).toEqual(1300)
-      expect(font.hhea.metricDataFormat).toEqual(0)
-      expect(font.hhea.numberOfHMetrics).toEqual(4)
+      expect(font.__dir__.hhea.ascent).toEqual(2450)
+      expect(font.__dir__.hhea.descent).toEqual(-900)
+      expect(font.__dir__.hhea.lineGap).toEqual(0)
+      expect(font.__dir__.hhea.numberOfHMetrics).toEqual(4)
     })
     it('parses maxp', () => {
-      expect(font.maxp.version).toBe(1)
-      expect(font.maxp.numGlyphs).toBe(4)
-      expect(font.maxp.maxPoints).toBe(67)
-      expect(font.maxp.maxContours).toBe(2)
-      expect(font.maxp.maxComponentPoints).toBe(0)
-      expect(font.maxp.maxComponentContours).toBe(0)
-      expect(font.maxp.maxZones).toBe(1)
-      expect(font.maxp.maxTwilightPoints).toBe(0)
-      expect(font.maxp.maxStorage).toBe(0)
-      expect(font.maxp.maxFunctionDefs).toBe(10)
-      expect(font.maxp.maxInstructionDefs).toBe(0)
-      expect(font.maxp.maxStackElements).toBe(512)
-      expect(font.maxp.maxSizeOfInstructions).toBe(371)
-      expect(font.maxp.maxComponentElements).toBe(0)
-      expect(font.maxp.maxComponentDepth).toBe(0)
+      expect(font.__dir__.maxp.numGlyphs).toBe(4)
     })
     it('parses post', () => {
-      expect(font.post.version).toBe(2)
-      expect(font.post.italicAngle).toBe(0)
-      expect(font.post.underlinePosition).toBe(-290)
-      expect(font.post.underlineThickness).toBe(120)
-      expect(font.post.isFixedPitch).toBe(0)
-      expect(font.post.minMemType42).toBe(0)
-      expect(font.post.maxMemType42).toBe(0)
-      expect(font.post.minMemType1).toBe(0)
-      expect(font.post.maxMemType1).toBe(4)
-      expect(font.post.glyphNameIndex && font.post.glyphNameIndex.length).toBe(4)
-      // @ts-ignore
-      expect(font.post.glyphNameIndex.get(0)).toBe(0)
-      // @ts-ignore
-      expect(font.post.glyphNameIndex.get(1)).toBe(68)
-      // @ts-ignore
-      expect(font.post.glyphNameIndex.get(2)).toBe(69)
-      // @ts-ignore
-      expect(font.post.glyphNameIndex.get(3)).toBe(70)
-      expect(font.post.names.length).toBe(258)
-    })
-    it('parses cvt', () => {
-      const controlValues = [42,98,104,184,215,0,33,-446,23,987,25,1374,33]
-      expect(font.cvt.controlValues.length).toBe(controlValues.length)
-      controlValues.forEach((v, i) => {
-        expect(font.cvt.controlValues.get(i)).toBe(v)
-      })
+      expect(font.__dir__.post.italicAngle).toBe(0)
+      expect(font.__dir__.post.isFixedPitch).toBe(0)
     })
     it('parses hmtx', () => {
-      expect(font.hmtx.advanceWidth(0)).toBe(1400)
-      expect(font.hmtx.advanceWidth(1)).toBe(1042)
-      expect(font.hmtx.advanceWidth(3)).toBe(954)
-      expect(font.hmtx.leftSideBearing(0)).toBe(100)
-      expect(font.hmtx.leftSideBearing(1)).toBe(70)
-      expect(font.hmtx.leftSideBearing(2)).toBe(29)
-      expect(font.hmtx.leftSideBearing(3)).toBe(70)
-      expect(font.hmtx.advanceWidth(4)).toBe(font.hmtx.advanceWidth(3))
-      expect(font.hmtx.advanceWidth(100)).toBe(font.hmtx.advanceWidth(3))
+      expect(font.__dir__.hmtx.advanceWidth(0)).toBe(1400)
+      expect(font.__dir__.hmtx.advanceWidth(1)).toBe(1042)
+      expect(font.__dir__.hmtx.advanceWidth(3)).toBe(954)
+      expect(font.__dir__.hmtx.leftSideBearing(0)).toBe(100)
+      expect(font.__dir__.hmtx.leftSideBearing(1)).toBe(70)
+      expect(font.__dir__.hmtx.leftSideBearing(2)).toBe(29)
+      expect(font.__dir__.hmtx.leftSideBearing(3)).toBe(70)
+      expect(font.__dir__.hmtx.advanceWidth(4)).toBe(font.__dir__.hmtx.advanceWidth(3))
+      expect(font.__dir__.hmtx.advanceWidth(100)).toBe(font.__dir__.hmtx.advanceWidth(3))
     })
     it('parses cmap', () => {
-      expect(font.cmap.get(0)).toBe(0)
-      expect(font.cmap.get(96)).toBe(0)
-      expect(font.cmap.get(97)).toBe(1)
-      expect(font.cmap.get(98)).toBe(2)
-      expect(font.cmap.get(99)).toBe(3)
-      expect(font.cmap.get(100)).toBe(0)
+      expect(font.__dir__.cmap.get(0)).toBe(0)
+      expect(font.__dir__.cmap.get(96)).toBe(0)
+      expect(font.__dir__.cmap.get(97)).toBe(1)
+      expect(font.__dir__.cmap.get(98)).toBe(2)
+      expect(font.__dir__.cmap.get(99)).toBe(3)
+      expect(font.__dir__.cmap.get(100)).toBe(0)
     })
     it('parses loca', () => {
-      expect(font.loca.get(0)).toBe(0)
-      expect(font.loca.get(1)).toBe(58)
-      expect(font.loca.get(2)).toBe(330)
-      expect(font.loca.get(3)).toBe(536)
-      expect(font.loca.get(4)).toBe(778)
-      expect(font.loca.length).toEqual(5)
-    })
-    it('parses fpgm', () => {
-      expect(font.fpgm.instructions && font.fpgm.instructions.length).toBe(371)
-      expect(font.fpgm.instructions[0]).toBe(184)
-    })
-    it('parses prep', () => {
-      expect(font.prep.controlValueProgram && font.prep.controlValueProgram.length).toBe(114)
-      expect(font.prep.controlValueProgram[0]).toBe(184)
+      expect(font.__dir__.loca.get(0)).toBe(0)
+      expect(font.__dir__.loca.get(1)).toBe(116)
+      expect(font.__dir__.loca.get(2)).toBe(660)
+      expect(font.__dir__.loca.get(3)).toBe(1072)
+      expect(font.__dir__.loca.get(4)).toBe(1556)
+      expect(font.__dir__.loca.length).toEqual(5)
     })
     it('parses glyf', () => {
-      expect(font.glyf.getGlyfData(0).length/2).toBe(58-0)
-      expect(font.glyf.getGlyfData(1).length/2).toBe(330-58)
-      expect(font.glyf.getGlyfData(2).length/2).toBe(536-330)
-      expect(font.glyf.getGlyfData(3).length/2).toBe(778-536)
-      expect(font.glyf.length).toEqual(4)
+      expect(font.__dir__.glyf.getGlyfData(0).length).toBe(116-0)
+      expect(font.__dir__.glyf.getGlyfData(1).length).toBe(660-116)
+      expect(font.__dir__.glyf.getGlyfData(2).length).toBe(1072-660)
+      expect(font.__dir__.glyf.getGlyfData(3).length).toBe(1556-1072)
+      expect(font.__dir__.glyf.length).toEqual(4)
     })
     it('parses OS/2', () => {
-      expect(font.os2.version).toBe(4)
-      expect(font.os2.xAvgCharWidth).toBe(1133)
-      expect(font.os2.usWeightClass).toBe(400)
-      expect(font.os2.usWidthClass).toBe(5)
-      expect(font.os2.fsType).toBe(0)
-      expect(font.os2.ySubscriptXSize).toBe(1331)
-      expect(font.os2.ySubscriptYSize).toBe(1229)
-      expect(font.os2.ySubscriptXOffset).toBe(5)
-      expect(font.os2.ySubscriptYOffset).toBe(460)
-      expect(font.os2.ySuperscriptXSize).toBe(1331)
-      expect(font.os2.ySuperscriptYSize).toBe(1229)
-      expect(font.os2.ySuperscriptXOffset).toBe(5)
-      expect(font.os2.ySuperscriptYOffset).toBe(785)
-      expect(font.os2.yStrikeoutSize).toBe(100)
-      expect(font.os2.yStrikeoutPosition).toBe(500)
-      expect(font.os2.sFamilyClass).toBe(0)
-      expect(font.os2.panose.bytes).toMatchObject(new Uint8Array([2,0,5,0,6,0,0,2,0,4]))
-      expect(font.os2.ulUnicodeRange.get(0)).toBe(2684355327-0xffffffff-1)
-      expect(font.os2.ulUnicodeRange.get(1)).toBe(268435456)
-      expect(font.os2.ulUnicodeRange.get(2)).toBe(33554473)
-      expect(font.os2.ulUnicodeRange.get(3)).toBe(0)
-      expect(font.os2.achVendID).toBe('SIL ')
-      expect(font.os2.fsSelection).toBe(64)
-      expect(font.os2.usFirstCharIndex).toBe(97)
-      expect(font.os2.usLastCharIndex).toBe(99)
-      expect(font.os2.sTypoAscender).toBe(2450)
-      expect(font.os2.sTypoDescender).toBe(-900)
-      expect(font.os2.sTypoLineGap).toBe(0)
-      expect(font.os2.usWinAscent).toBe(2450)
-      expect(font.os2.usWinDescent).toBe(900)
-      expect(font.os2.ulCodePageRange.get(0)).toBe(536871319)
-      expect(font.os2.ulCodePageRange.get(1)).toBe(0)
-      expect(font.os2.sxHeight).toBe(987)
-      expect(font.os2.sCapHeight).toBe(1374)
-      expect(font.os2.usDefaultChar).toBe(0)
-      expect(font.os2.usBreakChar).toBe(32)
-      expect(font.os2.usMaxContent).toBe(7)
+      expect(font.__dir__.os2.sFamilyClass).toBe(0)
+      expect(font.__dir__.os2.sxHeight).toBe(987)
+      expect(font.__dir__.os2.sCapHeight).toBe(1374)
     })
   })
+  describe('parse larger TTF font (CharisSIL-R)', () => {
+    const fontBuffer = testFontFile('CharisSIL/CharisSIL-R.ttf')
+    const fontData = new Uint8Array(fontBuffer)
+    const font = new TTFFont(fontData)
+    it('parses head', () => {
+      expect(font.bbox.minX).toBe(-1418)
+      expect(font.bbox.minY).toBe(-1092)
+      expect(font.bbox.maxX).toBe(6144)
+      expect(font.bbox.maxY).toBe(2600)
+      expect(font.__dir__.head.unitsPerEm).toBe(2048)
+      expect(font.__dir__.head._macStyle).toBe(0)
+      expect(font.__dir__.head.indexToLocFormat).toBe(1)
+    })
+    it('parses name', () => {
+      expect(font.__dir__.name.get('fontFamily')).toEqual('Charis SIL')
+      expect(font.__dir__.name.get('fullName')).toEqual('Charis SIL')
+      expect(font.__dir__.name.get('fontSubfamily')).toEqual('Regular')
+      expect(font.__dir__.name.get('postScriptName')).toEqual('CharisSIL')
+      expect(font.__dir__.name.get('uniqueID')).toEqual('SILInternational: Charis SIL: 2014')
+    })
+    it('parses hhea', () => {
+      expect(font.__dir__.hhea.ascent).toEqual(2450)
+      expect(font.__dir__.hhea.descent).toEqual(-900)
+      expect(font.__dir__.hhea.lineGap).toEqual(0)
+      expect(font.__dir__.hhea.numberOfHMetrics).toEqual(3685)
+    })
+    it('parses maxp', () => {
+      expect(font.__dir__.maxp.numGlyphs).toBe(3692)
+    })
+    it('parses post', () => {
+      expect(font.__dir__.post.italicAngle).toBe(0)
+      expect(font.__dir__.post.isFixedPitch).toBe(0)
+    })
+    it('parses hmtx', () => {
+      expect(font.__dir__.hmtx.advanceWidth(0)).toBe(1400)
+      expect(font.__dir__.hmtx.advanceWidth(106)).toBe(1042)
+      expect(font.__dir__.hmtx.advanceWidth(176)).toBe(2046)
+    })
+    it('parses cmap', () => {
+      expect(font.__dir__.cmap.get(0)).toBe(0)
+      expect(font.__dir__.cmap.get(0x00e0)).toBe(106)   // 'à' === '\u00e0'
+      expect(font.__dir__.cmap.get(0x0061)).toBe(68)    // 'a' === '\u00e0'
+    })
+    it('parses loca', () => {
+      expect(font.__dir__.loca.get(0)).toBe(0)
+      expect(font.__dir__.loca.get(1)).toBe(116)
+      expect(font.__dir__.loca.get(2)).toBe(116)
+      expect(font.__dir__.loca.get(106)).toBe(29360)
+      expect(font.__dir__.loca.get(107)).toBe(29384)
+      expect(font.__dir__.loca.length).toEqual(3692+1)
+    })
+    it('parses glyf', () => {
+      expect(font.__dir__.glyf.getGlyfData(0).length).toBe(116-0)
+      expect(font.__dir__.glyf.getGlyfData(1).length).toBe(0)
+      expect(font.__dir__.glyf.getGlyfData(106).length).toBe(29384-29360)
+    })
+    it('parses OS/2', () => {
+      expect(font.__dir__.os2.sFamilyClass).toBe(0)
+      expect(font.__dir__.os2.sxHeight).toBe(987)
+      expect(font.__dir__.os2.sCapHeight).toBe(1374)
+    })
+  })
+  describe('parse larger TTF font (Ubuntu-R.ttf)', () => {
+    const fontBuffer = testFontFile('ubuntu/Ubuntu-R.ttf')
+    const fontData = new Uint8Array(fontBuffer)
+    const font = new TTFFont(fontData)
+    const cs = ('U').split('').map(c => c.charCodeAt(0))
+    it('set attributes in a compatible way to fontkit', () => {
+      expect(font.__dir__.post.isFixedPitch).toBe(font.post.isFixedPitch)
+      expect(font.__dir__.head.macStyle.italic ? 1 : 0).toBe(font.head.macStyle.italic)
+      expect(font.__dir__.os2.sFamilyClass).toBe(font['OS/2'].sFamilyClass)
+    })
+    it('parses hmtx', () => {
+      expect(font.__dir__.hmtx.advanceWidth(0)).toBe(500)
+      expect(font.__dir__.hmtx.advanceWidth(1)).toBe(0)
+      expect(font.__dir__.hmtx.advanceWidth(19)).toBe(564)
+      expect(font.__dir__.hmtx.advanceWidth(56)).toBe(688)
+    })
+    it('parses cmap', () => {
+      expect(font.__dir__.cmap.get(-1)).toBe(0)
+      expect(font.__dir__.cmap.get(0)).toBe(1)
+      expect(font.__dir__.cmap.get(cs[0])).toBe(56)
+    })
+    it('advanced width', () => {
+      expect(font.widthOfText('')).toBe(0)
+      expect(font.widthOfText('U')).toBe(688)
+      expect(font.widthOfText('€')).toBe(564)
+      //expect(widths).toMatchObject(expected)
+    })
+    it('encode text', () => {
+      // const gliphIds = font.__dir__.encodeText('Ubuntu')
+      // const expected = new Uint16Array([56, 69, 88, 81, 87, 88])
+      // expect(gliphIds).toMatchObject(expected)
+      // expect(font.__dir__.encodeText('€')).toMatchObject(new Uint16Array([98]))
+    })
+    it('loca sorted', () => {
+      let prevOffset = font.__dir__.loca.get(0)
+      for (let i = 1; i<font.__dir__.loca.length - 1; i++) {
+        expect(prevOffset).toBeLessThanOrEqual(font.__dir__.loca.get(i))
+        prevOffset = font.__dir__.loca.get(i)
+      }
+    })
+    it('parses glyf', () => {
+      const glyfIds = [0, 56, 69, 88, 81, 87, 29, 3, 196, 195, 187, 201, 207, 212, 193, 197, 98, 125, 16, 72, 71]
+      glyfIds.forEach(glyfId => expect(font.__dir__.glyf.getGlyfData(glyfId).length).toBe(font.__dir__.loca.get(glyfId+1)-font.__dir__.loca.get(glyfId)))
+    })
+  })
+  describe('API', () => {
+    it('an encoded font retains required props', () => {
+      const font = TTFFont.for(new Uint8Array(testFontFile('CharisSIL/CharisSIL-abc.ttf')))
+      const subset = font.createSubset()
+      subset.includeGlyph(1)
+      subset.includeGlyph(2)
+      subset.includeGlyph(3)
+      const CDIStream = new DataStream()
+      subset.encode(CDIStream)
+      const CDIfont = TTFFont.for(CDIStream.getBytes())
+      expect(CDIfont.ascent).toBe(font.ascent)
+      expect(CDIfont.bbox).toMatchObject(font.bbox)
+      expect(CDIfont.descent).toBe(font.descent)
+      expect(CDIfont.familyClass).toBe(font.familyClass)
+      expect(CDIfont.flags).toBe(font.flags)
+      expect(CDIfont.lineGap).toBe(font.lineGap)
+      expect(CDIfont.macStyleItalic).toBe(font.macStyleItalic)
+      expect(CDIfont.unitsPerEm).toBe(font.unitsPerEm)
+      expect(CDIfont.__dir__.hhea.numberOfHMetrics).toEqual(4)
+      expect(CDIfont.__dir__.hmtx.advanceWidth(0)).toBe(1400)
+      expect(CDIfont.__dir__.hmtx.advanceWidth(1)).toBe(1042)
+      expect(CDIfont.__dir__.hmtx.advanceWidth(3)).toBe(954)
+      expect(CDIfont.__dir__.hmtx.leftSideBearing(0)).toBe(100)
+      expect(CDIfont.__dir__.hmtx.leftSideBearing(1)).toBe(70)
+      expect(CDIfont.__dir__.hmtx.leftSideBearing(2)).toBe(29)
+      expect(CDIfont.__dir__.hmtx.leftSideBearing(3)).toBe(70)
+      expect(CDIfont.__dir__.maxp.numGlyphs).toBe(4)
+      // not exporting tables post, name, OS/2, so cannot compare!
+      // expect(CDIfont.capHeight).toBe(font.capHeight)
+      // expect(CDIfont.isFixedPitch).toBe(font.isFixedPitch)
+      // expect(CDIfont.italicAngle).toBe(font.italicAngle)
+      // expect(CDIfont.postscriptName).toBe(font.postscriptName)
+      // expect(CDIfont.xHeight).toBe(font.xHeight)
+    })
+  })
+  // describe.skip('PDF-lib', () => {
+  //   it('pdfkit', () => {
+  //     const PDFDocument = require('pdfkit')
+  //     const doc = new PDFDocument()
+  //     doc.pipe(createWriteStream(__dirname+'/output.pdf'))
+  //     doc.font(testFontFile('CharisSIL-R.ttf'))
+  //     .fontSize(25)
+  //     .text('a', 100, 100)
+  //     // .text('a à €', 100, 100)
+  //     // .text('Τη γλώσσα', 100, 200)
+  //     // .text('PŮVODNÍ ZPRÁVA', 100, 300)
+  //     doc.end()
+  //   })
+  //   // it('load', () => {
+  //   //   const bytes = readFileSync(__dirname+'/output.pdf')
+  //   //   const doc = PDFDocumentFactory.load(bytes)
+  //   //   const fontRef = PDFIndirectReference.forNumbers(8,0)
+  //   //   const fontObj = doc.index.lookup(fontRef)
+  //   //   const fontData = inflate(fontObj.content)
+  //   //   const bytes2 = readFileSync(__dirname+'/output2.pdf')
+  //   //   const doc2 = PDFDocumentFactory.load(bytes2)
+  //   //   const fontRef2 = PDFIndirectReference.forNumbers(3,0)
+  //   //   const fontObj2 = doc2.index.lookup(fontRef2)
+  //   //   const fontData2 = inflate(fontObj2.content)
+  //   //   const font = TTFFont.for(fontData)
+  //   //   const font2 = TTFFont.for(fontData2)
+  //   //   for (let i=0; i<1463; i++) {
+  //   //     if (fontData2[i] !== fontData[i]) debugger
+  //   //   }
+  //   // })
+  //   it('pdflib', () => {
+  //     const pdfDoc = PDFDocumentFactory.create();
+  //     const font = new TTFFont(testFontFile('CharisSIL-R.ttf'))
+  //     const [FontUbuntu, fontEncoder] = pdfDoc.embedFont(font)
+  //     // Create pages:
+  //     const pageSize = 750;
+  //     const pageContentStream = pdfDoc.createContentStream(
+  //       drawLinesOfText([
+  //         // 'a',
+  //         'a à €',
+  //         'Τη γλώσσα',
+  //         'PŮVODNÍ ZPRÁVA',
+  //         ].map(text => fontEncoder.encodeText(text)),
+  //         {
+  //           x: 25,
+  //           y: pageSize - 100,
+  //           font: 'Ubuntu',
+  //           size: 32,
+  //           colorRgb: [1, 0, 1],
+  //         },
+  //       ),
+  //     )
+  //     const pageContentStreamRef = pdfDoc.register(pageContentStream);
+  //     const page = pdfDoc
+  //       .createPage([pageSize, pageSize])
+  //       .addFontDictionary('Ubuntu', FontUbuntu)
+  //       .addContentStreams(pageContentStreamRef);
+  //     pdfDoc.addPage(page);
+  //     const bytes = PDFDocumentWriter.saveToBytes(pdfDoc, { useObjectStreams: false });
+  //     writeFileSync(__dirname+'/output2.pdf', bytes)
+      
+  //   })
+  // })
 })
+

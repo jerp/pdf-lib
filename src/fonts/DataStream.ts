@@ -1,16 +1,21 @@
-export class DataStream {
+import { IStream } from 'fonts/Font'
+export class DataStream implements IStream {
   private extendBy: number = 65536
   private view: DataView
   offset: number = 0
   private buffer: ArrayBuffer
   private data: Uint8Array
+  private variableLength: boolean
+  private bookMarks: { [index: string]: number } = {}
 
   constructor(dataOrLength?: number | Uint8Array) {
     if (dataOrLength instanceof Uint8Array) {
       this.extendBy = 0
       this.data = <Uint8Array>dataOrLength
-      this.view = new DataView(this.data.buffer)
+      this.view = new DataView(this.data.buffer, dataOrLength.byteOffset, dataOrLength.byteLength)
+      this.buffer = <ArrayBuffer>this.data.buffer
     } else if (typeof dataOrLength === 'number' || dataOrLength === undefined) {
+      this.variableLength = true
       if (dataOrLength) this.extendBy = dataOrLength
       this.initBuffer(this.extendBy)
     } else {
@@ -38,6 +43,7 @@ export class DataStream {
     this.ensure(1);
     this.view.setUint8(this.offset, value);
     this.offset += 1;
+    return this
   }
   // Int8
   getInt8() {
@@ -47,6 +53,7 @@ export class DataStream {
     this.ensure(1);
     this.view.setInt8(this.offset, value);
     this.offset += 1
+    return this
   }
   // Uint16
   getUint16(littleEndian?: boolean) {
@@ -58,6 +65,7 @@ export class DataStream {
     this.ensure(2);
     this.view.setUint16(this.offset, value, littleEndian);
     this.offset += 2
+    return this
   }
   // Int16
   getInt16(littleEndian?: boolean) {
@@ -69,6 +77,16 @@ export class DataStream {
     this.ensure(2);
     this.view.setInt16(this.offset, value, littleEndian);
     this.offset += 2
+    return this
+  }
+  // Int16 with fixed decimal
+  getFixed16() {
+    return this.getInt16() / 0x100
+  }
+  setFixed16(value: number, littleEndian: boolean = false) {
+    this.view.setInt16(this.offset, (value * 0x100) | 0, littleEndian);
+    this.offset += 2
+    return this
   }
   // Uint32
   getUint32(littleEndian?: boolean) {
@@ -80,6 +98,7 @@ export class DataStream {
     this.ensure(4);
     this.view.setUint32(this.offset, value, littleEndian);
     this.offset += 4
+    return this
   }
   // Int32
   getInt32(littleEndian?: boolean) {
@@ -91,6 +110,7 @@ export class DataStream {
     this.ensure(4);
     this.view.setInt32(this.offset, value, littleEndian);
     this.offset += 4
+    return this
   }
   // Int32 with fixed decimal
   getFixed32() {
@@ -99,6 +119,7 @@ export class DataStream {
   setFixed32(value: number, littleEndian: boolean = false) {
     this.view.setInt32(this.offset, (value * 0x10000) | 0, littleEndian);
     this.offset += 4
+    return this
   }
   // UInt24
   getUint24(littleEndian?: boolean) {
@@ -110,6 +131,7 @@ export class DataStream {
     this.view.setUint8(this.offset++, littleEndian ? val & 0xff : (val >>> 16) & 0xff);
     this.view.setUint8(this.offset++, (val >>> 8) & 0xff);
     this.view.setUint8(this.offset++, littleEndian ? (val >>> 16) & 0xff : val & 0xff);
+    return this
   }
   // Int24
   getInt24(littleEndian?: boolean) {
@@ -120,9 +142,9 @@ export class DataStream {
   }
   setInt24(val: number, littleEndian: boolean = false) {
     if (val >= 0) {
-      this.setUint24(val, littleEndian);
+      return this.setUint24(val, littleEndian);
     } else {
-      this.setUint24(val + 0xffffff + 1, littleEndian);
+      return this.setUint24(val + 0xffffff + 1, littleEndian);
     }
   }
   // Float32
@@ -135,6 +157,7 @@ export class DataStream {
     this.ensure(4);
     this.view.setFloat32(this.offset, value, littleEndian);
     this.offset += 4
+    return this
   }
   // Float64
   getFloat64(littleEndian?: boolean) {
@@ -146,6 +169,7 @@ export class DataStream {
     this.ensure(8);
     this.view.setFloat64(this.offset, value, littleEndian);
     this.offset += 8
+    return this
   }
   getString(byteLength: number, encoding: string | void = 'ascii') {
     switch (encoding) {
@@ -168,16 +192,16 @@ export class DataStream {
     switch (encoding) {
       case 'utf16le': case 'ucs2':
         this.setUtf16(string, true)
-        break;
+        return this
       case 'utf8':
         this.setUtf8(string)
-        break;
+        return this
       case 'ascii':
         this.setAscii(string)
-        break;
+        return this
       case 'utf16be':
         this.setUtf16(string);
-        break;
+        return this
       default:
         // TODO: check whne this is required
         // require('iconv-lite')
@@ -287,13 +311,18 @@ export class DataStream {
   }
   // bytes
   getBytes(byteLength?: number) {
-    return byteLength !== undefined ? this.data.subarray(this.offset, this.offset += byteLength) : this.data.subarray(0, this.offset)
+    return byteLength !== undefined ? this.data.subarray(this.offset, this.offset += byteLength) : this.data.subarray(0, this.byteLength)
   }
   setBytes(typedArray: (Uint16Array | Int16Array | Int8Array | Uint8Array | Uint32Array | Int32Array)) {
     const uInt8Array = typedArray instanceof Uint8Array ? typedArray : new Uint8Array(typedArray.buffer, typedArray.byteOffset, typedArray.byteLength)
     this.ensure(uInt8Array.byteLength)
     this.data.set(uInt8Array, this.offset)
     this.offset += uInt8Array.byteLength
+    return this
+  }
+  // bytes
+  getStream(byteLength?: number) {
+    return new DataStream(byteLength !== undefined ? this.data.subarray(this.offset, this.offset += byteLength) : this.data.subarray(0, this.offset))
   }
   // views
   setTypedView(length: number, viewClass: any, littleEndian?: boolean) {
@@ -319,11 +348,57 @@ export class DataStream {
   //   return new Int32View(this, length, littleEndian)
   // }
   getDataView(byteLength: number) {
-    const dataView = new DataView(this.data.buffer, this.offset, byteLength)
+    const dataView = new DataView(this.data.buffer, this.data.byteOffset + this.offset, byteLength)
     this.offset += byteLength
     return dataView
   }
-  
+  skip(byteLength: number) {
+    this.offset += byteLength
+    return this
+  }
+  at(offset: number) {
+    this.offset = offset
+    return this
+  }
+  /** save current offset so it can be restored with restore(), optionally a bookmark name can be used */
+  save(name: string = '') {
+    this.bookMarks[name] = this.offset
+    return this
+  }
+  restore(name: string = '') {
+    return this.at(this.bookMarks[name])
+  }
+  get byteLength() {
+    return this.variableLength ? this.offset : this.data.byteLength
+  }
+  /**
+   * Mock Stream interface required by PDF Kit
+   */
+  writeString(string: string, encoding: string) { this.setString(string, encoding)}
+  writeUInt8(value: number) { this.setUint8(value)}
+  writeUInt16LE(value: number) { this.setUint16(value, true)}
+  writeUInt16BE(value: number) { this.setUint16(value)}
+  writeUInt32LE(value: number) { this.setUint32(value, true)}
+  writeUInt32BE(value: number) { this.setUint32(value)}
+  writeInt8(value: number) { this.setInt8(value)}
+  writeInt16LE(value: number) { this.setInt16(value, true)}
+  writeInt16BE(value: number) { this.setInt16(value)}
+  writeInt32LE(value: number) { this.setInt32(value, true)}
+  writeInt32BE(value: number) { this.setInt32(value)}
+  writeFloatLE(value: number) { this.setFloat32(value, true)}
+  writeFloatBE(value: number) { this.setFloat32(value)}
+  writeDoubleLE(value: number) { this.setFloat64(value, true)}
+  writeDoubleBE(value: number) { this.setFloat64(value)}
+  writeBuffer(value: Uint8Array) { this.setBytes(value)}
+  fill(value: any, n?: number, e?: number) {
+    if (typeof n !== 'number' || e != null) {
+      debugger
+    } else {
+      while (n-- > 0) this.setUint8(value)
+    }
+  }
+  // fill(value: any, offset?: number, end?: number) { debugger; this.setUint8(value)}
+
 }
 
 export abstract class TypedView {
@@ -343,6 +418,18 @@ export abstract class TypedView {
   }
   abstract get(idx: number): number
   abstract set(idx: number, value: number): void
+}
+export class Uint8View extends TypedView {
+  static elemByteLength = 1
+  constructor(stream: DataStream, length: number) {
+    super(stream, Uint8View.elemByteLength, length)
+  }
+  get(idx: number) {
+    return this.view.getUint8(idx)
+  }
+  set(idx: number, value: number) {
+    this.view.setUint8(idx, value)
+  }
 }
 export class Int8View extends TypedView {
   static elemByteLength = 1
@@ -365,7 +452,7 @@ export class Uint16View extends TypedView {
     return this.view.getUint16(idx * this.elemByteLength, this.littleEndian)
   }
   set(idx: number, value: number) {
-    this.view.setUint16(idx, value, this.littleEndian)
+    this.view.setUint16(idx * this.elemByteLength, value, this.littleEndian)
   }
 }
 export class Int16View extends TypedView {
@@ -377,7 +464,7 @@ export class Int16View extends TypedView {
     return this.view.getInt16(idx * this.elemByteLength, this.littleEndian)
   }
   set(idx: number, value: number) {
-    this.view.setInt16(idx, value, this.littleEndian)
+    this.view.setInt16(idx * this.elemByteLength, value, this.littleEndian)
   }
 }
 export class Uint32View extends TypedView {
@@ -389,7 +476,23 @@ export class Uint32View extends TypedView {
     return this.view.getUint32(idx * this.elemByteLength, this.littleEndian)
   }
   set(idx: number, value: number) {
-    this.view.setUint32(idx, value, this.littleEndian)
+    this.view.setUint32(idx * this.elemByteLength, value, this.littleEndian)
+  }
+}
+export class Uint24View extends TypedView {
+  static elemByteLength = 3
+  constructor(stream: DataStream, length: number, private littleEndian?: boolean) {
+    super(stream, Uint8View.elemByteLength, length)
+  }
+  get(idx: number) {
+    const offset = idx * this.elemByteLength
+    return this.littleEndian ? this.view.getUint16(offset, true) + (this.view.getUint8(offset+2) << 16) : (this.view.getUint16(offset) << 8) + this.view.getUint8(offset+2)
+  }
+  set(idx: number, value: number) {
+    const offset = idx * this.elemByteLength
+    this.view.setUint8(offset, this.littleEndian ? value & 0xff : (value >>> 16) & 0xff);
+    this.view.setUint8(offset+1, (value >>> 8) & 0xff);
+    this.view.setUint8(offset+2, this.littleEndian ? (value >>> 16) & 0xff : value & 0xff);
   }
 }
 export class Int32View extends TypedView {
@@ -401,6 +504,7 @@ export class Int32View extends TypedView {
     return this.view.getInt32(idx * this.elemByteLength, this.littleEndian)
   }
   set(idx: number, value: number) {
-    this.view.setInt32(idx, value, this.littleEndian)
+    this.view.setInt32(idx * this.elemByteLength, value, this.littleEndian)
   }
 }
+

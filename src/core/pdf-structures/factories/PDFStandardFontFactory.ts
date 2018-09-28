@@ -69,14 +69,12 @@ class PDFStandardFontFactory implements IPDFFontEncoder {
     this.fontName = fontName;
   }
   encodeText = (text: string): PDFHexString =>
-    PDFHexString.fromString(
-      text
+    PDFHexString.fromBytes(
+      new Uint8Array(text
         .split('')
         .map((char) => char.charCodeAt(0))
         .map((charCode) => UnicodeToWinAnsiMap[charCode] || charCode)
-        .map((charCode) => charCode.toString(16))
-        .join(''),
-    );
+    ));
 
   /*
       TODO:

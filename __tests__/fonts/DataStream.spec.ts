@@ -28,6 +28,13 @@ describe('DataStream', () => {
       expect(view.get(3)).toBe(0x0401)
       expect(stream.offset).toEqual(4 * 2)
     })
+    // 1 byte
+    it('should read Int8', () => {
+      const stream = new DataStream(new Uint8Array([0xff, 0x01]))
+      expect(stream.getInt8()).toEqual(-1)
+      expect(stream.getInt8()).toEqual(1)
+    })
+    // 2 bytes
     it('should read Uint16 big endian', () => {
       const stream = new DataStream(new Uint8Array([0xab, 0xcd]))
       expect(stream.getUint16()).toEqual(0xabcd)
@@ -45,6 +52,11 @@ describe('DataStream', () => {
       expect(stream2.getInt16(true)).toEqual(0x7fff)
       expect(stream2.offset).toEqual(2)
     })
+    it('should read Fixed16', () => {
+      const stream = new DataStream(new Uint8Array([0x01, 0x80]))
+      expect(stream.getFixed16()).toBe(1.5)
+      expect(stream.offset).toEqual(2)
+    })
     // 3 bytes
     it('should read UInt24 big endian', () => {
       const stream = new DataStream(data.xabcdef.BE)
@@ -52,33 +64,28 @@ describe('DataStream', () => {
       expect(stream.offset).toEqual(3)
     })
     it('should read UInt24 little endian', () => {
-      const buffer = new Uint8Array([0xab, 0xcd, 0xef])
-      const stream = new DataStream(buffer)
+      const stream = new DataStream(new Uint8Array([0xab, 0xcd, 0xef]))
       expect(stream.getUint24(true)).toEqual(0xefcdab)
       expect(stream.offset).toEqual(3)
     })
     it('should read Int24 big endian', () => {
-      const buffer = new Uint8Array([0xff, 0xab, 0x24])
-      const stream = new DataStream(buffer)
+      const stream = new DataStream(new Uint8Array([0xff, 0xab, 0x24]))
       expect(stream.getInt24()).toEqual(-21724)
       expect(stream.offset).toEqual(3)
     })
     it('should read Int24 little endian', () => {
-      const buffer = new Uint8Array([0x24, 0xab, 0xff])
-      const stream = new DataStream(buffer)
+      const stream = new DataStream(new Uint8Array([0x24, 0xab, 0xff]))
       expect(stream.getInt24(true)).toEqual(-21724)
       expect(stream.offset).toEqual(3)
     })
     // 4 bytes
     it('should read Uint32 big endian', () => {
-      const buffer = new Uint8Array([0xff, 0xab, 0x24, 0xbf])
-      const stream = new DataStream(buffer)
+      const stream = new DataStream(new Uint8Array([0xff, 0xab, 0x24, 0xbf]))
       expect(stream.getUint32()).toEqual(0xffab24bf)
       expect(stream.offset).toEqual(4)
     })
     it('should read Uint32 little endian', () => {
-      const buffer = new Uint8Array([0xbf, 0x24, 0xab, 0xff])
-      const stream = new DataStream(buffer)
+      const stream = new DataStream(new Uint8Array([0xbf, 0x24, 0xab, 0xff]))
       expect(stream.getUint32(true)).toEqual(0xffab24bf)
       expect(stream.offset).toEqual(4)
     })
@@ -106,9 +113,9 @@ describe('DataStream', () => {
       expect(stream.getFloat32(true)).toBeCloseTo(250.55, 2);
       expect(stream.offset).toEqual(4)
     })
-    it('should read Int16 little endian', () => {
-      const stream = new DataStream(new Uint8Array([0x00, 0xfa, 0x8c, 0xcc]))
-      expect(stream.getFixed32()).toBeCloseTo(250.55, 2)
+    it('should read Fixed32', () => {
+      const stream = new DataStream(new Uint8Array([0, 0x01, 0x80, 0]))
+      expect(stream.getFixed32()).toBe(1.5)
       expect(stream.offset).toEqual(4)
     })
     // 8 bytes
@@ -186,8 +193,8 @@ describe('DataStream', () => {
     });
     it('should write a buffer even when no more room', function () {
       const stream = new DataStream(4);
-      stream.setBytes(new Buffer([1, 2, 3, 4]));
-      stream.setBytes(new Buffer([5, 6, 7, 8]));
+      stream.setBytes(new Buffer([1, 2, 3, 4]))
+      .setBytes(new Buffer([5, 6, 7, 8]));
       expect(stream.getBytes()).toMatchObject(new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]))
       stream.setBytes(new Buffer([9, 10, 11, 12, 13, 14]));
       expect(stream.getBytes()).toMatchObject(new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]))
@@ -206,6 +213,12 @@ describe('DataStream', () => {
       expect(stream.getBytes()).toMatchObject(new Uint8Array([255]))
       expect(stream.offset).toEqual(1)
     });
+    it('should read Fixed32', () => {
+      const stream = new DataStream()
+      stream.setFixed16(1.5)
+      expect(stream.getBytes()).toMatchObject(new Uint8Array([0x01, 0x80]))
+      expect(stream.offset).toEqual(2)
+    })
     // 2 bytes
     it('should write Int16 little endian', function () {
       const stream = new DataStream;
@@ -259,6 +272,30 @@ describe('DataStream', () => {
       expect(stream.offset).toEqual(3 * 2)
     });
     // 4 bytes
+    it('should write Int32 little endian', function () {
+      const stream = new DataStream;
+      stream.setInt32(-2, true);
+      expect(stream.getBytes()).toMatchObject(new Uint8Array([0xfe, 0xff, 0xff, 0xff]))
+      expect(stream.offset).toEqual(4)
+    });
+    it('should write Int32 big endian', function () {
+      const stream = new DataStream;
+      stream.setInt32(-2);
+      expect(stream.getBytes()).toMatchObject(new Uint8Array([0xff, 0xff, 0xff, 0xfe]))
+      expect(stream.offset).toEqual(4)
+    });
+    it('should write Uint32 big endian', function () {
+      const stream = new DataStream;
+      stream.setUint32(0xabcd);
+      expect(stream.getBytes()).toMatchObject(new Uint8Array([0, 0, 0xab, 0xcd]))
+      expect(stream.offset).toEqual(4)
+    });
+    it('should write Uint32 little endian', function () {
+      const stream = new DataStream;
+      stream.setUint32(0xcdab, true);
+      expect(stream.getBytes()).toMatchObject(new Uint8Array([0xab, 0xcd, 0, 0]))
+      expect(stream.offset).toEqual(4)
+    });
     it('should write Float32 little endian', () => {
       const stream = new DataStream;
       stream.setFloat32(250.55, true);
@@ -269,6 +306,12 @@ describe('DataStream', () => {
       const stream = new DataStream;
       stream.setFloat32(250.55);
       expect(stream.getBytes()).toMatchObject(new Uint8Array([0x43, 0x7a, 0x8c, 0xcd]));
+      expect(stream.offset).toEqual(4)
+    })
+    it('should read Fixed32', () => {
+      const stream = new DataStream()
+      stream.setFixed32(1.5)
+      expect(stream.getBytes()).toMatchObject(new Uint8Array([0, 0x01, 0x80, 0]))
       expect(stream.offset).toEqual(4)
     })
     // 8 bytes
@@ -323,7 +366,6 @@ describe('DataStream', () => {
       expect(stream.offset).toEqual(22)
     });
   })
-  // Needed?
   describe('Additional Test on utf8', () => {
     // source: http://www.columbia.edu/~fdc/utf8/
     const toBytes = (string) => {
@@ -376,17 +418,69 @@ describe('DataStream', () => {
       });
     })
   })
-  // describe('Special Encodgin', () => {
-  //   // Install iconv-lite to enable additional string encodings
-  //   it('should encode macroman', function() {
-  //     const stream = new DataStream;
-  //     stream.setString('äccented cháracters', 'mac');
-  //     expect(stream.getBytes()).toMatchObject(new Uint8Array([0x8a, 0x63, 0x63, 0x65, 0x6e, 0x74, 0x65, 0x64, 0x20, 0x63, 0x68, 0x87, 0x72, 0x61, 0x63, 0x74, 0x65, 0x72, 0x73]))
-  //   });
-  //   it('should should decode macroman', () => {
-  //     const buffer = new Uint8Array([0x8a, 0x63, 0x63, 0x65, 0x6e, 0x74, 0x65, 0x64, 0x20, 0x63, 0x68, 0x87, 0x72, 0x61, 0x63, 0x74, 0x65, 0x72, 0x73])
-  //     const stream = new DataStream(buffer)
-  //     expect(stream.getString(buffer.length, 'mac')).toEqual('unicode! 👍')
-  //   })
-  // })
+  describe('Additional Test buffer compatibility', () => {
+    it('calls compatible function', () => {
+      const stream1 = new DataStream
+      const stream2 = new DataStream
+      stream1.writeString('test', 'ascii')
+      stream2.setString('test', 'ascii')
+      stream1.writeUInt8(1)
+      stream2.setUint8(1)
+      stream1.writeUInt16LE(1)
+      stream2.setUint16(1, true)
+      stream1.writeUInt16BE(1)
+      stream2.setUint16(1)
+      stream1.writeUInt32LE(1)
+      stream2.setUint32(1, true)
+      stream1.writeUInt32BE(1)
+      stream2.setUint32(1)
+      stream1.writeInt8(1)
+      stream2.setInt8(1)
+      stream1.writeInt16LE(1)
+      stream2.setInt16(1, true)
+      stream1.writeInt16BE(1)
+      stream2.setInt16(1)
+      stream1.writeInt32LE(1)
+      stream2.setInt32(1, true)
+      stream1.writeInt32BE(1)
+      stream2.setInt32(1)
+      stream1.writeFloatLE(1)
+      stream2.setFloat32(1, true)
+      stream1.writeFloatBE(1)
+      stream2.setFloat32(1)
+      stream1.writeDoubleLE(1)
+      stream2.setFloat64(1, true)
+      stream1.writeDoubleBE(1)
+      stream2.setFloat64(1)
+      stream1.writeBuffer(new Uint8Array([1]))
+      stream2.setBytes(new Uint8Array([1]))
+      stream1.fill(1, 2)
+      stream2.setBytes(new Uint8Array([1,1]))
+      expect(stream1.getBytes()).toMatchObject(stream2.getBytes())
+    })
+  })
+  describe('Additional Test on manupulating DataStreams', () => {
+    it('getStream returns a data stream with good offset and byteLength', function () {
+      const stream = new DataStream(new Uint8Array([0,1,2,3,4,5,6,7,8,9]));
+      const subStream = stream.at(2).getStream(5)
+      expect(subStream.offset).toBe(0)
+      expect(subStream.byteLength).toBe(5)
+      expect(subStream.getBytes()).toMatchObject(new Uint8Array([2,3,4,5,6]))
+    });
+    it('get bytes returns a buffer with good offset and byteLength', function () {
+      const stream = new DataStream(new Uint8Array([0,1,2,3,4,5,6,7,8,9]));
+      const subStream = stream.at(2).getStream(5).at(1).setUint16(0xfffe).setUint8(0xfd)
+      expect(subStream.offset).toBe(4)
+      expect(subStream.byteLength).toBe(5)
+      expect(subStream.at(0).getBytes()).toMatchObject(new Uint8Array([2,255,254,253,6]))
+    });
+    it('navigating in a stream', function () {
+      const stream = new DataStream(new Uint8Array([0,1,2,3,4,5,6,7,8,9]));
+      expect(stream.skip(1).save().skip(1).getUint8()).toBe(2)
+      expect(stream.restore().getUint8()).toBe(1)
+      expect(stream.save('at2').skip(2).save('at4').getUint8()).toBe(4)
+      expect(stream.restore('at2').getUint8()).toBe(2)
+      expect(stream.restore('at4').getUint8()).toBe(4)
+    });
+  })
 })

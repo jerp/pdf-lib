@@ -1,26 +1,16 @@
+import { directory } from 'fonts/tables/DirectoryTypes';
 import { DataStream } from 'fonts/DataStream';
-export abstract class Table {
-  static index: any = {}
-  public name: string
-  static register(name: string, definition: any) {
-    Table.index[name] = definition
+export class Table {
+  protected sourceStream: DataStream
+  protected doDecode: (directory?: directory) => void
+  decode(stream: DataStream, directory: directory) {
+    this.sourceStream = stream
+    if (this.doDecode) this.doDecode(directory)
   }
-  get tableName(): string {
-    // @ts-ignore
-    return this.constructor.tableName
+  encode(stream: DataStream, subset?: number[]) {
+    stream.setBytes(this.sourceStream.getBytes())
   }
-  // // TODO how to type directory without creating a circular ref
-  // static decode(tableName: string, stream: DataStream, offset: number, byteLength: number, directory: any): Table | null {
-  //   const tableDefinition = Table.index[tableName]
-  //   if (tableDefinition) {
-  //     stream.offset = offset
-  //     const table = tableDefinition.decode(stream, byteLength, directory)
-  //     table.name = tableName
-  //     return table
-  //   } else {
-  //     return null
-  //   }
-  // }
-  // TODO how to type directory without creating a circular ref
-  abstract decode(stream: DataStream, byteLength: number, directory?: any): void
+  get hasData() {
+    return !!this.sourceStream
+  }
 }

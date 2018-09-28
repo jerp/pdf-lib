@@ -1,7 +1,7 @@
 import flatMap from 'lodash/flatMap';
 import get from 'lodash/get';
 
-import { PDFName } from 'core/pdf-objects';
+import { PDFName, PDFHexString } from 'core/pdf-objects';
 import PDFOperator from 'core/pdf-operators/PDFOperator';
 import PDFTextObject from 'core/pdf-operators/text/PDFTextObject';
 
@@ -261,7 +261,7 @@ export interface IDrawLinesOfTextOptions {
  * @param options An options object with named parameters.
  */
 export const drawLinesOfText = (
-  lines: string[],
+  lines: (string|PDFHexString)[],
   options: IDrawLinesOfTextOptions,
 ): PDFOperator[] => [
   PDFTextObject.of(
