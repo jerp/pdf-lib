@@ -21,13 +21,13 @@ import {
  * Decoding TTF, subsetting...
  */
 export class TTFFont implements IFont {
-  static for = (data: Uint8Array) => new TTFFont(data)
+  static for = (data: Uint8Array, CIDFont?: boolean) => new TTFFont(data, CIDFont)
   // mapping subset[targetId] > sourceId
   public subsetCodePoints: Array<boolean[]> = [[true]]
   // mapping subsetIndex[sourceId] > targetId
   public subsetIndex: {[index: number] :number} = { 0: 0 }
   public directory: directory
-  constructor(public data: Uint8Array) {
+  constructor(private data: Uint8Array, private CIDFont: boolean = false) {
     const stream = new DataStream(this.data)
     const directoryFactory = DirectoryFactory.forDecode(stream)
     this.directory = {
@@ -64,15 +64,15 @@ export class TTFFont implements IFont {
     this.directory.os2.sFamilyClass = this['OS/2'].sFamilyClass
   }
   private validateTTF() {
-    if (!this.directory.cmap.hasData) throw new Error('TTF required table cmap is missing')
+    if (!this.CIDFont && !this.directory.cmap.hasData) throw new Error('TTF required table cmap is missing')
     if (!this.directory.glyf.hasData) throw new Error('TTF required table glyf is missing')
     if (!this.directory.head.hasData) throw new Error('TTF required table head is missing')
     if (!this.directory.hhea.hasData) throw new Error('TTF required table hhea is missing')
     if (!this.directory.hmtx.hasData) throw new Error('TTF required table hmtx is missing')
     if (!this.directory.loca.hasData) throw new Error('TTF required table loca is missing')
     if (!this.directory.maxp.hasData) throw new Error('TTF required table maxp is missing')
-    if (!this.directory.name.hasData) throw new Error('TTF required table name is missing')
-    if (!this.directory.post.hasData) throw new Error('TTF required table post is missing')
+    if (!this.CIDFont && !this.directory.name.hasData) throw new Error('TTF required table name is missing')
+    if (!this.CIDFont && !this.directory.post.hasData) throw new Error('TTF required table post is missing')
   }
   widthOfText(text: string) {
     const cmap = this.directory.cmap
@@ -226,7 +226,7 @@ class DirectoryFactory {
       const tableByteLength = this.stream.getUint32()
       table.decode(new DataStream(this.stream.at(tableOffsetPos).getBytes(tableByteLength)), directory)
     } else {
-      debugger
+      // debugger
       // TODO recovery mode: in some case it is possible to rebuld the table...
     }
   }

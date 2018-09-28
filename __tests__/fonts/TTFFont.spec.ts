@@ -209,7 +209,7 @@ describe('TTFFont', () => {
       subset.includeGlyph(3)
       const CDIStream = new DataStream()
       subset.encode(CDIStream)
-      const CDIfont = TTFFont.for(CDIStream.getBytes())
+      const CDIfont = TTFFont.for(CDIStream.getBytes(), true)
       expect(CDIfont.ascent).toBe(font.ascent)
       expect(CDIfont.bbox).toMatchObject(font.bbox)
       expect(CDIfont.descent).toBe(font.descent)
