@@ -19,6 +19,7 @@ export interface IStream {
 }
 // min requirement for a font (PDFkit compatible)
 export interface IFont {
+  isTTF: boolean
   postscriptName: string
   unitsPerEm: number
   ascent: number

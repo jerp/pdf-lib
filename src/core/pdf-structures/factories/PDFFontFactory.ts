@@ -125,7 +125,7 @@ class PDFFontFactory implements IPDFFontEncoder {
     const toUnicodeStreamBytesSize = toUnicodeStream.bytesSize
     // const fontStreamCopyBytesInto = fontStream.copyBytesInto
     fontStream.bytesSize = ():number => {
-      // TODO fix this uggly dirty pieace
+      // TODO fix this uggly dirty piece
       // embededFontInfo.data should be calculated only just before writing the PDF
       fontStream.dictionary.set(PDFName.from('Filter'), PDFName.from('FlateDecode'));
       const encodedContent = deflate(this.embededFont.subsetData.data)

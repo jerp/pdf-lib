@@ -21,6 +21,9 @@ import {
  * Decoding TTF, subsetting...
  */
 export class TTFFont implements IFont {
+  get isTTF() {
+    return true
+  }
   static for = (data: Uint8Array, CIDFont?: boolean) => new TTFFont(data, CIDFont)
   // mapping subset[targetId] > sourceId
   public subsetCodePoints: Array<boolean[]> = [[true]]
@@ -207,13 +210,6 @@ class DirectoryFactory {
     // make room for directory items
     stream.offset += numTables * DirectoryFactory.entryLength
     return directoryFactory
-  }
-  getTableNames() {
-    const names = []
-    for (let i = 0; i<this.numTables; i++) {
-      names.push(this.stream.restore('tableOffsetsPos').skip(i * DirectoryFactory.entryLength).getString(4))
-    }
-    return names
   }
   scanTableName(tableName: string) {
     for (let i = 0; i<this.numTables; i++) {

@@ -374,28 +374,63 @@ export class DataStream implements IStream {
   /**
    * Mock Stream interface required by PDF Kit
    */
-  writeString(string: string, encoding: string) { this.setString(string, encoding)}
-  writeUInt8(value: number) { this.setUint8(value)}
-  writeUInt16LE(value: number) { this.setUint16(value, true)}
-  writeUInt16BE(value: number) { this.setUint16(value)}
-  writeUInt32LE(value: number) { this.setUint32(value, true)}
-  writeUInt32BE(value: number) { this.setUint32(value)}
-  writeInt8(value: number) { this.setInt8(value)}
-  writeInt16LE(value: number) { this.setInt16(value, true)}
-  writeInt16BE(value: number) { this.setInt16(value)}
-  writeInt32LE(value: number) { this.setInt32(value, true)}
-  writeInt32BE(value: number) { this.setInt32(value)}
-  writeFloatLE(value: number) { this.setFloat32(value, true)}
-  writeFloatBE(value: number) { this.setFloat32(value)}
-  writeDoubleLE(value: number) { this.setFloat64(value, true)}
-  writeDoubleBE(value: number) { this.setFloat64(value)}
-  writeBuffer(value: Uint8Array) { this.setBytes(value)}
+  writeString(string: string, encoding: string) {
+    this.setString(string, encoding)
+  }
+  writeUInt8(value: number) {
+    this.setUint8(value)
+  }
+  writeUInt16LE(value: number) {
+    this.setUint16(value, true)
+  }
+  writeUInt16BE(value: number) {
+    this.setUint16(value)
+  }
+  writeUInt32LE(value: number) {
+    this.setUint32(value, true)
+  }
+  writeUInt32BE(value: number) {
+    this.setUint32(value)
+  }
+  writeInt8(value: number) {
+    this.setInt8(value)
+  }
+  writeInt16LE(value: number) {
+    this.setInt16(value, true)
+  }
+  writeInt16BE(value: number) {
+    this.setInt16(value)
+  }
+  writeInt32LE(value: number) {
+    this.setInt32(value, true)
+  }
+  writeInt32BE(value: number) {
+    this.setInt32(value)
+  }
+  writeFloatLE(value: number) {
+    this.setFloat32(value, true)
+  }
+  writeFloatBE(value: number) {
+    this.setFloat32(value)
+  }
+  writeDoubleLE(value: number) {
+    this.setFloat64(value, true)
+  }
+  writeDoubleBE(value: number) {
+    this.setFloat64(value)
+  }
+  writeBuffer(value: Uint8Array) {
+    this.setBytes(value)
+  }
   fill(value: any, n?: number, e?: number) {
     if (typeof n !== 'number' || e != null) {
       debugger
     } else {
       while (n-- > 0) this.setUint8(value)
     }
+  }
+  get pos() {
+    return this.offset
   }
   // fill(value: any, offset?: number, end?: number) { debugger; this.setUint8(value)}
 

@@ -37,6 +37,7 @@ const assets = {
       indie_flower_r: readFont('indie_flower/IndieFlower.ttf', true),
       great_vibes_r: readFont('great_vibes/GreatVibes-Regular.ttf', true),
       CharisSIL_r: readFont('CharisSIL/CharisSIL-R.ttf', true),
+      CharisSIL_r_FK: readFont('CharisSIL/CharisSIL-R.ttf'),
     },
     otf: {
       fantasque_sans_mono_bi: readFont(
