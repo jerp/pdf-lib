@@ -13,6 +13,7 @@ import { PDFContentStream } from 'core/pdf-structures';
 import PDFPage from 'core/pdf-structures/PDFPage';
 
 import { ITestAssets, ITestKernel } from '../models';
+import { namedEmbededFonts } from 'fonts/Font';
 
 // Clipping path operators
 const { W } = PDFOperators;
@@ -282,18 +283,19 @@ const drawTextLines = (
   fontName: string,
   fontSize: number,
   lines: number,
+  embededFonts: namedEmbededFonts,
   extraSpace = false,
 ) => [
   Tf.of(fontName, fontSize),
   ...flatMap(loremIpsumLines, (sentence) => [
-    Tj.of(extraSpace ? sentence.replace(/\ /g, '   ') : sentence),
+    Tj.of(embededFonts[fontName].encodeText(fontName + ' ' + (extraSpace ? sentence.replace(/\ /g, '   ') : sentence))),
     Td.of(0, -fontSize),
   ]),
   Td.of(0, -25),
 ];
 
 // ===== Draw text in different fonts in the second page's content stream =====
-const makePage2ContentStream = (pdfDoc: PDFDocument, pageSize: number) =>
+const makePage2ContentStream = (pdfDoc: PDFDocument, pageSize: number, embededFonts: namedEmbededFonts) =>
   PDFContentStream.of(
     PDFDictionary.from({}, pdfDoc.index),
 
@@ -314,14 +316,14 @@ const makePage2ContentStream = (pdfDoc: PDFDocument, pageSize: number) =>
       rg.of(101 / 255, 123 / 255, 131 / 255),
 
       // Draw 8 paragraphs of text, each in a different font.
-      ...drawTextLines('Ubuntu-R', 20, 5),
-      ...drawTextLines('Fantasque-BI', 25, 5),
-      ...drawTextLines('IndieFlower-R', 25, 5),
-      ...drawTextLines('GreatVibes-R', 30, 5),
-      ...drawTextLines('AppleStorm-R', 25, 5),
-      ...drawTextLines('BioRhyme-R', 15, 5),
-      ...drawTextLines('PressStart2P-R', 15, 5),
-      ...drawTextLines('Hussar3D-R', 25, 5, true),
+      ...drawTextLines('Ubuntu-R', 20, 5, embededFonts),
+      ...drawTextLines('Fantasque-BI', 25, 5, embededFonts),
+      ...drawTextLines('IndieFlower-R', 25, 5, embededFonts),
+      ...drawTextLines('GreatVibes-R', 30, 5, embededFonts),
+      ...drawTextLines('AppleStorm-R', 25, 5, embededFonts),
+      ...drawTextLines('BioRhyme-R', 15, 5, embededFonts),
+      ...drawTextLines('PressStart2P-R', 15, 5, embededFonts),
+      ...drawTextLines('Hussar3D-R', 25, 5, embededFonts, true),
     ),
   );
 
@@ -380,16 +382,25 @@ const kernel: ITestKernel = (assets: ITestAssets) => {
   // Embed fonts:
   const { ttf, otf } = assets.fonts;
 
-  const [FontUbuntuR] = pdfDoc.embedFont(ttf.ubuntu_r);
-  const [FontBioRhymeR] = pdfDoc.embedFont(ttf.bio_rhyme_r);
-  const [FontPressStart2PR] = pdfDoc.embedFont(ttf.press_start_2p_r);
-  const [FontIndieFlowerR] = pdfDoc.embedFont(ttf.indie_flower_r);
-  const [FontGreatVibesR] = pdfDoc.embedFont(ttf.great_vibes_r);
+  const [FontUbuntuR, eFontUbuntuR] = pdfDoc.embedFont(ttf.ubuntu_r);
+  const [FontBioRhymeR, eFontBioRhymeR] = pdfDoc.embedFont(ttf.bio_rhyme_r);
+  const [FontPressStart2PR, eFontPressStart2PR] = pdfDoc.embedFont(ttf.press_start_2p_r);
+  const [FontIndieFlowerR, eFontIndieFlowerR] = pdfDoc.embedFont(ttf.indie_flower_r);
+  const [FontGreatVibesR, eFontGreatVibesR] = pdfDoc.embedFont(ttf.great_vibes_r);
 
-  const [FontFantasqueBI] = pdfDoc.embedFont(otf.fantasque_sans_mono_bi);
-  const [FontAppleStormR] = pdfDoc.embedFont(otf.apple_storm_r);
-  const [FontHussar3D] = pdfDoc.embedFont(otf.hussar_3d_r);
-
+  const [FontFantasqueBI, eFontFantasqueBI] = pdfDoc.embedFont(otf.fantasque_sans_mono_bi);
+  const [FontAppleStormR, eFontAppleStormR] = pdfDoc.embedFont(otf.apple_storm_r);
+  const [FontHussar3D, eFontHussar3D] = pdfDoc.embedFont(otf.hussar_3d_r);
+  const embededFonts: namedEmbededFonts = {
+    'Ubuntu-R': eFontUbuntuR,
+    'BioRhyme-R': eFontBioRhymeR,
+    'PressStart2P-R': eFontPressStart2PR,
+    'IndieFlower-R': eFontIndieFlowerR,
+    'GreatVibes-R': eFontGreatVibesR,
+    'Fantasque-BI': eFontFantasqueBI,
+    'AppleStorm-R': eFontAppleStormR,
+    'Hussar3D-R': eFontHussar3D,
+  }
   // Embed images:
   const { jpg, png } = assets.images;
 
@@ -414,7 +425,7 @@ const kernel: ITestKernel = (assets: ITestAssets) => {
     .addContentStreams(page1ContentStreamRef);
 
   const page2Size = 750;
-  const page2ContentStream = makePage2ContentStream(pdfDoc, page2Size);
+  const page2ContentStream = makePage2ContentStream(pdfDoc, page2Size, embededFonts);
   const page2ContentStreamRef = pdfDoc.register(page2ContentStream);
 
   const page2 = pdfDoc

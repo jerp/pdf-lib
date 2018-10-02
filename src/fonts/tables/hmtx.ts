@@ -1,7 +1,7 @@
 /* 
- ## **'hmtx'**: Horizontal Metrics Table
   
-  The hmtx table
+  ## 'hmtx': Horizontal Metrics Table
+  
   [ms](https://docs.microsoft.com/en-us/typography/opentype/spec/hmtx)
   [osx](https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6hmtx.html)
   contains metric information for the horizontal layout each of the glyphs in the font.

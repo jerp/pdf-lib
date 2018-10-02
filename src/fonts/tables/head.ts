@@ -1,8 +1,10 @@
 /*
   
   ## The 'head' table: General table information
-  
-  The [head](https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6head.html) table contains global information about the font.
+
+  [msf](https://docs.microsoft.com/en-us/typography/opentype/spec/head)
+  [osx](https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6head.html)
+  table contains global information about the font.
 
 */
 

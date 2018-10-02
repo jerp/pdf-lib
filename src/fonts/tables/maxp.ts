@@ -1,8 +1,9 @@
 /*
   
-  ## The 'maxp' table: General table information
+  ## 'maxp': General table information
   
-  The [maxp](https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6maxp.html) table
+  [ms](https://docs.microsoft.com/en-us/typography/opentype/spec/maxp)
+  [maxp](https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6maxp.html)
   ...
 
 */

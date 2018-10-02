@@ -1,8 +1,9 @@
 /*
   
-  ## The 'loca' table: General table information
+  ## 'loca': General table information
   
-  The [loca](https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6loca.html) table
+  [ms](https://docs.microsoft.com/en-us/typography/opentype/spec/loca)
+  [osx](https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6loca.html)
   stores the offsets to the locations of the glyphs in the font relative to the beginning of the 'glyf' table.
   Its purpose is to provide quick access to the data for a particular character.
   For example, in the standard Macintosh glyph ordering, the character A is the 76th glyph in a font.

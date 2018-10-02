@@ -4,9 +4,10 @@
 */
 
 import { DataStream } from 'fonts/DataStream';
-import { IFont, ISubset } from 'fonts/Font'
-
-export { IFont }
+import { IFont, ISubset, IEmbededFont } from 'fonts/Font'
+// import {
+//   PDFIndirectReference,
+// } from 'core/pdf-objects';
 
 export interface IFontFlagOptions {
   FixedPitch?: boolean;
@@ -29,10 +30,13 @@ export type subsetDataType = {
   widths: number[],
 }
 
-export class EmbededFont {
+export class EmbededFont implements IEmbededFont { // extends PDFIndirectReference
+  get hasCff() {
+    return this.subset.cff != null
+  }
   private subset: ISubset
   private subsetCodePoints: (number[])[] = [[0]]
-  private widths: number[] = [1400]
+  private widths: number[]
   private cachedSubsetData: subsetDataType
   private cachedFontName: string
   static for(font: IFont) {
@@ -40,35 +44,36 @@ export class EmbededFont {
   }
   constructor(private font: IFont) {
     this.subset = this.font.createSubset()
+    this.widths = [ this.widthOfText(String.fromCharCode(0)) ]
     // fix fontkit issues when cff.topDict.Private.Subrs is missing
-    this.fixSubset(this.subset)
+    this.fixSubset(this.subset.cff)
   }
-  private fixSubset(subset: any) {
-    if (subset.cff && subset.cff.topDict && subset.cff.topDict.Private && !subset.cff.topDict.Private.Subrs) {
-      subset.cff.topDict.Private.Subrs = []
+  private fixSubset(cff: any) {
+    if (cff && cff.topDict && cff.topDict.Private && !cff.topDict.Private.Subrs) {
+      cff.topDict.Private.Subrs = []
     }
   }
-  /** get basic properties of font to be embeded */
-  widthOfText(text: string): number {
-    return this.font.layout(text).advanceWidth
+  // scaling to PDF units (1000/em)
+  private scaling(width: number) {
+    return Math.round(width * 1000 / this.unitsPerEm)
   }
   get fontBBox() {
-    return [this.font.bbox.minX, this.font.bbox.minX, this.font.bbox.maxX, this.font.bbox.maxY]
+    return [this.font.bbox.minX, this.font.bbox.minX, this.font.bbox.maxX, this.font.bbox.maxY].map(this.scaling.bind(this))
   }
   get italicAngle() {
     return this.font.italicAngle
   }
   get ascent() {
-    return this.font.ascent
+    return this.scaling(this.font.ascent)
   }
   get descent() {
-    return this.font.descent
+    return this.scaling(this.font.descent)
   }
   get capHeight() {
-    return this.font.capHeight
+    return this.scaling(this.font.capHeight)
   }
   get xHeight() {
-    return this.font.xHeight
+    return this.scaling(this.font.xHeight)
   }
   get postScriptName() {
     return this.font.postscriptName
@@ -82,16 +87,20 @@ export class EmbededFont {
   get macStyleItalic() {
     return !!this.font.head.macStyle.italic
   }
+  /** get basic properties of font to be embeded */
+  widthOfText(text: string): number {
+    return this.scaling(this.font.layout(text).advanceWidth)
+  }
   /** encode a series of words - no advance consideration */
-  encodeText(text: string): number[] {
+  encodeText(text: string): Uint16Array {
     const { glyphs } = this.font.layout(text)
     const glyphIds = glyphs.map(({id, codePoints, advanceWidth}) => {
       const subsetId = this.subset.includeGlyph(id)
       this.subsetCodePoints[subsetId] = codePoints
-      this.widths[subsetId] = advanceWidth
+      this.widths[subsetId] = this.scaling(advanceWidth)
       return subsetId
     })
-    return glyphIds
+    return new Uint16Array(glyphIds)
   }
   get flags(): number {
     // FixedPitch: 1,
@@ -136,7 +145,7 @@ export class EmbededFont {
           codespacerange: [0, 0xFFFF],
           ranges: this.subsetCodePoints.slice(1),
         },
-        widths: this.widths
+        widths: this.widths,
       }
     }
     return this.cachedSubsetData

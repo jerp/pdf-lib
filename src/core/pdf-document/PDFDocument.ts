@@ -22,7 +22,8 @@ import {
 } from 'core/pdf-structures';
 import JPEGXObjectFactory from 'core/pdf-structures/factories/JPEGXObjectFactory';
 import PDFFontEncoder from 'core/pdf-structures/factories/PDFFontEncoder';
-import { IFont, IFontFlagOptions } from 'fonts/EmbededFont'
+import { IFontFlagOptions } from 'fonts/EmbededFont'
+import { IFont, IEmbededFont } from 'fonts/Font'
 import PDFFontFactory from 'core/pdf-structures/factories/PDFFontFactory';
 import PDFStandardFontFactory from 'core/pdf-structures/factories/PDFStandardFontFactory';
 import PNGXObjectFactory from 'core/pdf-structures/factories/PNGXObjectFactory';
@@ -262,9 +263,9 @@ class PDFDocument {
   embedFont = (
     font: IFont,
     fontFlags: IFontFlagOptions = { Nonsymbolic: true },
-  ): [PDFIndirectReference<PDFDictionary>, PDFFontFactory] => {
+  ): [PDFIndirectReference<PDFDictionary>, IEmbededFont] => {
     const fontFactory = PDFFontFactory.for(font, fontFlags);
-    return [fontFactory.embedFontIn(this), fontFactory];
+    return [fontFactory.embedFontIn(this), fontFactory.embededFont];
   };
 
   /**

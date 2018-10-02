@@ -14,7 +14,7 @@ import { ITestAssets, ITestKernel } from '../models';
 const kernel: ITestKernel = (assets: ITestAssets) => {
   const { ttf } = assets.fonts;
   const pdfDoc = PDFDocumentFactory.create();
-  const [FontCharisSIL, fontEncoder] = pdfDoc.embedFont(ttf.CharisSIL_r)
+  const [FontCharisSIL, embededFont] = pdfDoc.embedFont(ttf.CharisSIL_r)
   // Create pages:
   const pageSize = 750;
   const pageContentStream = pdfDoc.createContentStream(
@@ -22,7 +22,7 @@ const kernel: ITestKernel = (assets: ITestAssets) => {
         'a à ặ', // composite glyphs with 2 and 3 components
         '€ ꝝ',   // encoding of euro
         'PŮVODNÍ ZPRÁVA', // Czeck
-      ].map(text => fontEncoder.encodeText(text)),
+      ],
       {
         x: 25,
         y: pageSize - 100,
@@ -30,6 +30,7 @@ const kernel: ITestKernel = (assets: ITestAssets) => {
         size: 25,
         colorRgb: [3/16, 3/16, 3/16],
         lineHeight: 48,
+        embededFont,
       },
     ),
   )

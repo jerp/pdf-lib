@@ -2,7 +2,8 @@
   
   ## The 'glyf' table: General table information
   
-  The [glyf](https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6glyf.html) table
+  [msf](https://docs.microsoft.com/en-us/typography/opentype/spec/glyf)
+  [osx](https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6glyf.html)
   The 'glyf' table contains the data that defines the appearance of the glyphs in the font.
   The 'glyf' table supports the definition of simple glyphs and compound glyphs, that is,
   glyphs that are made up of other glyphs.

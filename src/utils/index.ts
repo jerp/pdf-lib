@@ -252,8 +252,11 @@ export const arrayFindIndexOf = (
 export const setCharAt = (str: string, idx: number, newChar: string) =>
   str.substring(0, idx) + newChar + str.substring(idx + 1);
 
-export const byteToHex = (byte: number) => ('0' + (byte & 0xFF).toString(16)).slice(-2)
-export const byteToHex2 = (byte: number) => ('000' + (byte & 0xFFFF).toString(16)).slice(-4)
+export const uint8ToHex = (byte: number) => ('0' + (byte & 0xFF).toString(16)).slice(-2)
+export const uint16ToHex = (byte: number) => ('000' + (byte & 0xFFFF).toString(16)).slice(-4)
 
-export const bytesToHex = (bytes: ArrayLike<number>, byteSize: number = 1, joiner: string = '') =>
-  Array.prototype.map.call(bytes, byteSize === 2 ? byteToHex2 : byteToHex).join(joiner)
+export const uint8ArrayToHex = (bytes: ArrayLike<number>, joiner: string = '') =>
+  Array.prototype.map.call(bytes, uint8ToHex).join(joiner)
+
+export const uint16ArrayToHex = (bytes: ArrayLike<number>, joiner: string = '') =>
+  Array.prototype.map.call(bytes, uint16ToHex).join(joiner)

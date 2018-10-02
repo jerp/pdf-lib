@@ -13,18 +13,18 @@ import { isInstance, validate, validateArr } from 'utils/validate';
  * Show a text string.
  */
 export class Tj extends PDFOperator {
-  static of = (str: PDFString | PDFHexString | string) => new Tj(str);
+  static of = (str: PDFString | PDFHexString | Uint16Array | string) => new Tj(str);
 
-  string: PDFString | PDFHexString;
+  string: PDFString | Uint16Array;
 
-  constructor(str: PDFString | PDFHexString | string) {
+  constructor(str: PDFString | PDFHexString | Uint16Array | string) {
     super();
     validate(
       str,
-      or(isInstance(PDFString), isInstance(PDFHexString), isString),
-      'Tj operator arg "str" must be one of: PDFString, PDFHexString, String',
+      or(isInstance(PDFString), isInstance(Uint16Array), isString),
+      'Tj operator arg "str" must be one of: PDFString, Uint16Array, String',
     );
-    this.string = isString(str) ? PDFString.fromString(str) : str;
+    this.string = isString(str) ? PDFString.fromString(str) : str instanceof Uint16Array ? PDFHexString.fromUint16Array(str) : str;
   }
 
   toString = () => `${this.string} Tj\n`;
@@ -48,13 +48,13 @@ export class Tj extends PDFOperator {
  * moving the next glyph painted either to the left or down by the given amount.
  */
 export class TJ extends PDFOperator {
-  static of = (...array: Array<PDFString | PDFHexString | string | number>) =>
+  static of = (...array: Array<PDFString | PDFHexString | Uint16Array | string | number>) =>
     new TJ(...array);
 
   array: Array<PDFString | PDFHexString | PDFNumber>;
 
   constructor(
-    ...array: Array<PDFString | PDFHexString | PDFNumber | string | number>
+    ...array: Array<PDFString | PDFHexString | Uint16Array | PDFNumber | string | number>
   ) {
     super();
     if (array.length === 0) {
@@ -66,7 +66,7 @@ export class TJ extends PDFOperator {
       array,
       or(
         isInstance(PDFString),
-        isInstance(PDFHexString),
+        isInstance(Uint16Array),
         isInstance(PDFNumber),
         isString,
         isNumber,
@@ -78,6 +78,7 @@ export class TJ extends PDFOperator {
     this.array = array.map((elem) =>
         isString(elem) ? PDFString.fromString(elem)
       : isNumber(elem) ? PDFNumber.fromNumber(elem)
+      : elem instanceof Uint16Array ? PDFHexString.fromUint16Array(elem)
       : elem
     );
   }

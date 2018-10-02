@@ -1,8 +1,10 @@
 /*
   
-  ## The 'hhea' table: General table information
+  ## 'hhea': General table information
   
-  The [hhea](https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6hhea.html) table
+  [msf](https://docs.microsoft.com/en-us/typography/opentype/spec/hhea)
+  [osx](https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6hhea.html)
+  
   contains information needed to layout fonts whose characters are written horizontally,
   that is, either left to right or right to left.
 

@@ -1,3 +1,10 @@
+export interface IEmbededFont {
+  hasCff: boolean
+  widthOfText(text: string): number
+  encodeText(text: string): Uint16Array
+}
+
+export type namedEmbededFonts = { [index: string]: IEmbededFont}
 // stream methods used by PDFKit must be implemented
 export interface IStream {
   writeString(string: string, encoding: string): void
@@ -48,6 +55,7 @@ export interface IFont {
 }
 // min requirement for a font subset (PDFkit compatible)
 export interface ISubset {
+  cff?: any
   includeGlyph: (glyphId: number) => number
   encode: (stream: IStream) => void
 }

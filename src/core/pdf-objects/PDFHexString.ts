@@ -1,6 +1,6 @@
 import isString from 'lodash/isString';
 
-import { addStringToBuffer, bytesToHex } from 'utils';
+import { addStringToBuffer, uint16ArrayToHex } from 'utils';
 import { doesMatch, validate } from 'utils/validate';
 
 import PDFObject from './PDFObject';
@@ -11,7 +11,7 @@ const HEX_STRING_REGEX = /^[\dABCDEFabcdef\0\t\n\f\r ]*$/;
 
 class PDFHexString extends PDFObject {
   static fromString = (str: string) => new PDFHexString(str);
-  static fromBytes = (bytes: (ArrayLike<number>)) => PDFHexString.fromString(bytesToHex(bytes, 2))
+  static fromUint16Array = (bytes: (ArrayLike<number>)) => new PDFHexString(uint16ArrayToHex(bytes))
 
   string: string;
 

@@ -15,6 +15,8 @@ import {
   text,
 } from 'helpers/pdf-operators/simple';
 
+import { IEmbededFont } from 'fonts/Font'
+
 /**
  * Options object with named parameters for the [[drawText]] operator helper.
  */
@@ -37,6 +39,8 @@ export interface IDrawTextOptions {
    * the `drawText` operator is applied.
    */
   font: string | PDFName;
+  embededFont: IEmbededFont;
+
   /**
    * Default value is `12`.
    *
@@ -144,7 +148,7 @@ export const drawText = (
       options.x || 0,
       options.y || 0,
     ),
-    text(line),
+    text(options.embededFont ? options.embededFont.encodeText(line): line),
   ),
 ];
 
@@ -172,6 +176,7 @@ export interface IDrawLinesOfTextOptions {
    * the `drawLinesOfText` operator is applied.
    */
   font: string | PDFName;
+  embededFont: IEmbededFont;
   /**
    * Default value is `12`.
    *
@@ -261,7 +266,7 @@ export interface IDrawLinesOfTextOptions {
  * @param options An options object with named parameters.
  */
 export const drawLinesOfText = (
-  lines: (string|PDFHexString)[],
+  lines: (string)[],
   options: IDrawLinesOfTextOptions,
 ): PDFOperator[] => [
   PDFTextObject.of(
@@ -287,6 +292,6 @@ export const drawLinesOfText = (
       options.x || 0,
       options.y || 0,
     ),
-    ...flatMap(lines, (line) => [text(line), nextLine()]),
+    ...flatMap(lines, (line) => [text(options.embededFont ? options.embededFont.encodeText(line): line), nextLine()]),
   ),
 ];

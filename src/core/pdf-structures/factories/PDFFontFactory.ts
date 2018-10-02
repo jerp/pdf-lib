@@ -3,7 +3,8 @@ import isObject from 'lodash/isObject';
 import isString from 'lodash/isString';
 import { deflate } from 'pako';
 
-import { IFont, EmbededFont, IFontFlagOptions } from 'fonts/EmbededFont'
+import { EmbededFont, IFontFlagOptions } from 'fonts/EmbededFont'
+import { IFont } from 'fonts/Font'
 
 import PDFDocument from 'core/pdf-document/PDFDocument';
 import {
@@ -15,7 +16,7 @@ import {
   PDFRawStream,
   PDFHexString,
 } from 'core/pdf-objects';
-import { or, bytesToHex, byteToHex2, typedArrayFor } from 'utils';
+import { or, uint16ToHex, typedArrayFor } from 'utils';
 import { isInstance, validate } from 'utils/validate';
 
 import IPDFFontEncoder from 'core/pdf-structures/factories/PDFFontEncoder';
@@ -28,12 +29,11 @@ import IPDFFontEncoder from 'core/pdf-structures/factories/PDFFontEncoder';
  * as this class borrows heavily from:
  * https://github.com/devongovett/pdfkit/blob/e71edab0dd4657b5a767804ba86c94c58d01fbca/lib/font/embedded.coffee
  */
-class PDFFontFactory implements IPDFFontEncoder {
+class PDFFontFactory {
   static for = (font: IFont, flagOptions: IFontFlagOptions) =>
     new PDFFontFactory(font, flagOptions);
 
   embededFont: EmbededFont;
-  scale: number;
   flagOptions: IFontFlagOptions;
 
   constructor(font: IFont, flagOptions: IFontFlagOptions) {
@@ -46,17 +46,14 @@ class PDFFontFactory implements IPDFFontEncoder {
 
     this.flagOptions = flagOptions;
     this.embededFont = EmbededFont.for(font);
-    this.scale = 1000 / this.embededFont.unitsPerEm;
   }
   
-  encodeText = (text: string): PDFHexString => PDFHexString.fromBytes(this.embededFont.encodeText(text));
   /*
     Embed a subset of this font into a document
   */
   embedFontIn = (
     pdfDoc: PDFDocument,
     name?: string,
-    subsetting: boolean = false
   ): PDFIndirectReference<PDFDictionary> => {
     /*
       A composite font, also called a Type 0 font, is one whose glyphs are obtained from a fontlike object
@@ -71,33 +68,37 @@ class PDFFontFactory implements IPDFFontEncoder {
       dictionary, and its DescendantFonts entry shall reference the CIDFont dictionary with which the CMap
       has been combined.
     */
-    const fontStream = PDFRawStream.from(PDFDictionary.from(
-      {
+   console.log(this.embededFont.fontName, this.embededFont.hasCff)
+    const fontStream = PDFRawStream.from(PDFDictionary.from(Object.assign({
         Length: PDFNumber.fromNumber(0),
-      },
+      }, this.embededFont.hasCff ? {
+        Subtype: PDFName.from('CIDFontType0C')
+      } : null),
       pdfDoc.index,
     ), new Uint8Array(0))
-    const embededFontDict = PDFDictionary.from(
-      {
+    const embededFontDict = PDFDictionary.from(Object.assign({
         Type: PDFName.from('FontDescriptor'),
         FontName: PDFName.from(this.embededFont.fontName),
         Flags: PDFNumber.fromNumber(4 || this.embededFont.flags), // 32 Nonsymboli 4 symbolic
-        FontBBox: PDFArray.fromArray(this.embededFont.fontBBox.map((n: number) => PDFNumber.fromNumber(n*this.scale)), pdfDoc.index),
+        FontBBox: PDFArray.fromArray(this.embededFont.fontBBox.map((n: number) => PDFNumber.fromNumber(n)), pdfDoc.index),
         ItalicAngle: PDFNumber.fromNumber(this.embededFont.italicAngle),
-        Ascent: PDFNumber.fromNumber(this.embededFont.ascent*this.scale),
-        Descent: PDFNumber.fromNumber(this.embededFont.descent*this.scale),
-        CapHeight: PDFNumber.fromNumber(this.embededFont.capHeight*this.scale),
-        XHeight: PDFNumber.fromNumber(this.embededFont.xHeight*this.scale),
+        Ascent: PDFNumber.fromNumber(this.embededFont.ascent),
+        Descent: PDFNumber.fromNumber(this.embededFont.descent),
+        CapHeight: PDFNumber.fromNumber(this.embededFont.capHeight),
+        XHeight: PDFNumber.fromNumber(this.embededFont.xHeight),
         StemV: PDFNumber.fromNumber(0), // StemV
+      }, this.embededFont.hasCff ? {
+        FontFile3: pdfDoc.register(fontStream),
+      } : {
         FontFile2: pdfDoc.register(fontStream),
-      },
+      }),
       pdfDoc.index,
     );
     const widthArray = PDFArray.fromArray(<PDFNumber[]>[], pdfDoc.index)
     const descendantFontDict = PDFDictionary.from(
       {
         Type: PDFName.from('Font'),
-        Subtype: PDFName.from('CIDFontType2'),
+        Subtype: PDFName.from(this.embededFont.hasCff ? 'CIDFontType0' : 'CIDFontType2'),
         BaseFont: PDFName.from(this.embededFont.fontName),
         CIDSystemInfo: PDFDictionary.from({
           Registry: PDFString.fromString('Adobe'),
@@ -118,7 +119,7 @@ class PDFFontFactory implements IPDFFontEncoder {
       }, pdfDoc.index), new Uint8Array)
     const widthArrayBytesSize = widthArray.bytesSize
     widthArray.bytesSize = ():number => {
-      this.embededFont.subsetData.widths.forEach((w,i) => widthArray.array[i] = PDFNumber.fromNumber(w*this.scale))
+      this.embededFont.subsetData.widths.forEach((w,i) => widthArray.array[i] = PDFNumber.fromNumber(w))
       return widthArrayBytesSize()
     }
     const fontStreamBytesSize = fontStream.bytesSize
@@ -157,11 +158,11 @@ class PDFFontFactory implements IPDFFontEncoder {
         '/CMapName /Adobe-Identity-UCS def',
         '/CMapType 2 def',
         '1 begincodespacerange',
-        CMap.codespacerange.map((c: number) => `<${byteToHex2(c)}>`).join(' '),
+        CMap.codespacerange.map((c: number) => `<${uint16ToHex(c)}>`).join(' '),
         'endcodespacerange',
         '1 beginbfrange',
         // most compact form for our use case
-        `<0000> <${byteToHex2(CMap.ranges.length)}> [<0000> ${CMap.ranges.map(codePoints => `<${codePoints.map(cp => byteToHex2(cp)).join('')}>`).join(' ')}]`,
+        `<0000> <${uint16ToHex(CMap.ranges.length)}> [<0000> ${CMap.ranges.map(codePoints => `<${codePoints.map(cp => uint16ToHex(cp)).join('')}>`).join(' ')}]`,
         'endbfrange',
         // 1 beginbfchar
         // <3A51> <D840DC3E>

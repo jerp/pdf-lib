@@ -1,5 +1,5 @@
 import { TTFFont } from 'fonts/TTFFont'
-import { readFileSync, createWriteStream, writeFileSync } from 'fs'
+import { readFileSync } from 'fs'
 
 import {
   drawLinesOfText,
@@ -11,7 +11,6 @@ import {
   PDFIndirectReference,
 } from '../../src/core/pdf-objects';
 import { DataStream } from 'fonts/DataStream';
-import { dirname } from 'path';
 
 const testFontFile = (fontFile) => readFileSync(`${__dirname}/../../__integration_tests__/assets/fonts/${fontFile}`)
 
