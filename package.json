@@ -42,7 +42,6 @@
   },
   "homepage": "https://github.com/Hopding/pdf-lib#readme",
   "dependencies": {
-    "@types/opentype": "^0.0.4",
     "buffer": "^5.0.8",
     "lodash": "^4.17.4",
     "pako": "^1.0.6",
@@ -55,6 +54,7 @@
     "@types/jest": "^22.2.2",
     "@types/lodash": "^4.14.110",
     "@types/node": "^9.6.0",
+    "@types/opentype.js": "^0.7.0",
     "@types/pako": "^1.0.0",
     "chalk": "^2.4.1",
     "del": "^3.0.0",
@@ -100,7 +100,6 @@
     ],
     "moduleNameMapper": {
       "^core/(.*)": "<rootDir>/src/core/$1",
-      "^fonts/(.*)": "<rootDir>/src/fonts/$1",
       "^helpers/(.*)": "<rootDir>/src/helpers/$1",
       "^utils/(.*)": "<rootDir>/src/utils/$1",
       "^utils": "<rootDir>/src/utils/index.ts"

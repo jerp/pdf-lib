@@ -1,18 +1,22 @@
-import { IFont } from 'fonts/Font'
+import { TTFFont } from 'helpers/TTFFont'
+import { FontkitFont } from 'fontkit'
+import { Font as OpenTypeJs } from 'opentype.js'
 export interface ITestAssets {
   fonts: {
     ttf: {
-      ubuntu_r: IFont;
-      bio_rhyme_r: IFont;
-      press_start_2p_r: IFont;
-      indie_flower_r: IFont;
-      great_vibes_r: IFont;
-      CharisSIL_r: IFont;
+      ubuntu_r: TTFFont;
+      bio_rhyme_r: TTFFont;
+      press_start_2p_r: TTFFont;
+      indie_flower_r: TTFFont;
+      great_vibes_r: TTFFont;
+      CharisSIL_r: TTFFont;
+      CharisSIL_r_FK: FontkitFont;
     };
     otf: {
-      fantasque_sans_mono_bi: IFont;
-      apple_storm_r: IFont;
-      hussar_3d_r: IFont;
+      fantasque_sans_mono_bi: OpenTypeJs;
+      apple_storm_r: OpenTypeJs;
+      hussar_3d_r: OpenTypeJs;
+      NotoSansCJKsc_Medium: OpenTypeJs;
     };
   };
   images: {

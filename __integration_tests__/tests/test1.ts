@@ -13,7 +13,7 @@ import { PDFContentStream } from 'core/pdf-structures';
 import PDFPage from 'core/pdf-structures/PDFPage';
 
 import { ITestAssets, ITestKernel } from '../models';
-import { namedEmbededFonts } from 'fonts/Font';
+import { namedEmbededFonts } from 'core/pdf-structures/factories/EmbededFont';
 
 // Clipping path operators
 const { W } = PDFOperators;

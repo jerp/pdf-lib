@@ -12,9 +12,10 @@ import { ITestAssets, ITestKernel } from '../models';
 
 // Define the test kernel using the above content stream functions.
 const kernel: ITestKernel = (assets: ITestAssets) => {
-  const { ttf } = assets.fonts;
+  const { ttf, otf } = assets.fonts;
   const pdfDoc = PDFDocumentFactory.create();
-  const [FontCharisSIL, embededFont] = pdfDoc.embedFont(ttf.CharisSIL_r)
+  const [FontCharisSIL, eFontCharisSIL] = pdfDoc.embedFont(ttf.CharisSIL_r)
+  const [NotoSansCJKsc, eNotoSansCJKsc] = pdfDoc.embedFont(otf.NotoSansCJKsc_Medium)
   // Create pages:
   const pageSize = 750;
   const pageContentStream = pdfDoc.createContentStream(
@@ -30,7 +31,20 @@ const kernel: ITestKernel = (assets: ITestAssets) => {
         size: 25,
         colorRgb: [3/16, 3/16, 3/16],
         lineHeight: 48,
-        embededFont,
+        embededFont: eFontCharisSIL,
+      },
+    ),
+    drawLinesOfText([
+        '쪚\uCAC6',
+      ],
+      {
+        x: 25,
+        y: pageSize - 300,
+        font: 'NotoSansCJKsc',
+        size: 25,
+        colorRgb: [3/16, 3/16, 3/16],
+        lineHeight: 48,
+        embededFont: eNotoSansCJKsc,
       },
     ),
   )
@@ -38,6 +52,7 @@ const kernel: ITestKernel = (assets: ITestAssets) => {
   const page = pdfDoc
     .createPage([pageSize, pageSize])
     .addFontDictionary('CharisSIL_r', FontCharisSIL)
+    .addFontDictionary('NotoSansCJKsc', NotoSansCJKsc)
     .addContentStreams(pageContentStreamRef);
   pdfDoc.addPage(page);
   return PDFDocumentWriter.saveToBytes(pdfDoc, { useObjectStreams: false });
@@ -49,6 +64,10 @@ export default {
   description:
     'More than english',
   checklist: [
-    '3 lines displayed:','line 1 prints variations of a: "a à ặ"', 'line 2 prints "€ ꝝ"', 'line 3 prints Czeck text "PŮVODNÍ ZPRÁVA"',
+    '4 lines displayed:',
+    'line 1 prints variations of a: "a à ặ"',
+    'line 2 prints "€ ꝝ"',
+    'line 3 prints Czeck text "PŮVODNÍ ZPRÁVA"',
+    'line 3 prints Chinses text "쪚\uCAC6"'
   ],
 };

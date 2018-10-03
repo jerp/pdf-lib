@@ -111,6 +111,10 @@
   version "9.6.0"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-9.6.0.tgz#d3480ee666df9784b1001a1872a2f6ccefb6c2d7"
 
+"@types/opentype.js@^0.7.0":
+  version "0.7.0"
+  resolved "https://registry.yarnpkg.com/@types/opentype.js/-/opentype.js-0.7.0.tgz#19da6337f20e6c26f7256c1c83a8fd90da100d27"
+
 "@types/opentype@^0.0.4":
   version "0.0.4"
   resolved "https://registry.yarnpkg.com/@types/opentype/-/opentype-0.0.4.tgz#69d2658ab9bc87a88088d11e578bd95284c9c9d4"

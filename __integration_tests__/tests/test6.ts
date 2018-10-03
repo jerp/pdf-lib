@@ -13,10 +13,12 @@ import {
 } from '../../src';
 
 import { ITestAssets, ITestKernel } from '../models';
+import { EmbededFont } from 'core/pdf-structures/factories/EmbededFont';
 
 const makeOverlayContentStream = (
   pdfDoc: PDFDocument,
   marioDims: { width: number; height: number },
+  embededFont: EmbededFont,
 ) =>
   pdfDoc.createContentStream(
     ...drawImage('Mario', {
@@ -46,6 +48,7 @@ const makeOverlayContentStream = (
         colorRgb: [101 / 255, 123 / 255, 131 / 255],
         font: 'Ubuntu',
         size: 24,
+        embededFont
       },
     ),
   );
@@ -66,14 +69,14 @@ const kernel: ITestKernel = (assets: ITestAssets) => {
   const pdfDoc = PDFDocumentFactory.load(assets.pdfs.with_large_page_count);
 
   const [FontTimesRoman] = pdfDoc.embedStandardFont('Times-Roman');
-  const [FontUbuntu] = pdfDoc.embedFont(assets.fonts.ttf.ubuntu_r);
+  const [FontUbuntu, eFontUbuntu] = pdfDoc.embedFont(assets.fonts.ttf.ubuntu_r);
 
   const [PngMario, marioDims] = pdfDoc.embedPNG(assets.images.png.small_mario);
 
   const pages = pdfDoc.getPages();
 
   const overlayContentStreamRef = pdfDoc.register(
-    makeOverlayContentStream(pdfDoc, marioDims),
+    makeOverlayContentStream(pdfDoc, marioDims, eFontUbuntu),
   );
 
   pages.forEach((page) => {

@@ -1,10 +1,6 @@
-import isNil from 'lodash/isNil';
-import isObject from 'lodash/isObject';
-import isString from 'lodash/isString';
 import { deflate } from 'pako';
 
-import { EmbededFont, IFontFlagOptions } from 'fonts/EmbededFont'
-import { IFont } from 'fonts/Font'
+import { EmbededFont, embedableFont, TTFFont, FontkitFont, OpentypeJsFont } from 'core/pdf-structures/factories/EmbededFont'
 
 import PDFDocument from 'core/pdf-document/PDFDocument';
 import {
@@ -14,46 +10,30 @@ import {
   PDFName, PDFString,
   PDFNumber,
   PDFRawStream,
-  PDFHexString,
 } from 'core/pdf-objects';
 import { or, uint16ToHex, typedArrayFor } from 'utils';
-import { isInstance, validate } from 'utils/validate';
 
-import IPDFFontEncoder from 'core/pdf-structures/factories/PDFFontEncoder';
 /**
- * This Factory supports TrueType and OpenType fonts. Note that the apparent
- * hardcoding of values for OpenType fonts does not actually affect TrueType
- * fonts.
- *
- * A note of thanks to the developers of https://github.com/devongovett/pdfkit,
- * as this class borrows heavily from:
- * https://github.com/devongovett/pdfkit/blob/e71edab0dd4657b5a767804ba86c94c58d01fbca/lib/font/embedded.coffee
+ * This Factory supports TrueType and OpenType fonts.
+ * It needs a font instance created using the intarnal TTFFont class or
+ * one of the 2 supported libs: `fontkit` or `opentype.js`
  */
 class PDFFontFactory {
-  static for = (font: IFont, flagOptions: IFontFlagOptions) =>
-    new PDFFontFactory(font, flagOptions);
-
-  embededFont: EmbededFont;
-  flagOptions: IFontFlagOptions;
-
-  constructor(font: IFont, flagOptions: IFontFlagOptions) {
-    // validate(
-    //   font,
-    //   isInstance(IFont),
-    //   '"font" must be a Font instance',
-    // );
-    validate(flagOptions, isObject, '"flagOptions" must be an Object');
-
-    this.flagOptions = flagOptions;
-    this.embededFont = EmbededFont.for(font);
-  }
+  /** creates EmbededFont trying to indetify the managing font lib (internal | `fontkit` | `opentype.js`) */
+  static for = (font: embedableFont) => font instanceof TTFFont ?
+    EmbededFont.forTTFont(font) :
+    font.hasOwnProperty('head') ?
+      // assumes that the presence of `font.head` means instance of fonkit Font
+      EmbededFont.forFonkitFont(font as FontkitFont) :
+      // last option is opentype.js
+      EmbededFont.forOpentypeJs(font as OpentypeJsFont)
   
   /*
-    Embed a subset of this font into a document
+    Embed the used subset of this font into a document
   */
-  embedFontIn = (
+ static embedFontIn = (
     pdfDoc: PDFDocument,
-    name?: string,
+    embededFont: EmbededFont,
   ): PDFIndirectReference<PDFDictionary> => {
     /*
       A composite font, also called a Type 0 font, is one whose glyphs are obtained from a fontlike object
@@ -68,26 +48,25 @@ class PDFFontFactory {
       dictionary, and its DescendantFonts entry shall reference the CIDFont dictionary with which the CMap
       has been combined.
     */
-   console.log(this.embededFont.fontName, this.embededFont.hasCff)
     const fontStream = PDFRawStream.from(PDFDictionary.from(Object.assign({
         Length: PDFNumber.fromNumber(0),
-      }, this.embededFont.hasCff ? {
-        Subtype: PDFName.from('CIDFontType0C')
+      }, embededFont.fontStreamSubtype ? {
+        Subtype: PDFName.from(embededFont.fontStreamSubtype)
       } : null),
       pdfDoc.index,
     ), new Uint8Array(0))
     const embededFontDict = PDFDictionary.from(Object.assign({
         Type: PDFName.from('FontDescriptor'),
-        FontName: PDFName.from(this.embededFont.fontName),
-        Flags: PDFNumber.fromNumber(4 || this.embededFont.flags), // 32 Nonsymboli 4 symbolic
-        FontBBox: PDFArray.fromArray(this.embededFont.fontBBox.map((n: number) => PDFNumber.fromNumber(n)), pdfDoc.index),
-        ItalicAngle: PDFNumber.fromNumber(this.embededFont.italicAngle),
-        Ascent: PDFNumber.fromNumber(this.embededFont.ascent),
-        Descent: PDFNumber.fromNumber(this.embededFont.descent),
-        CapHeight: PDFNumber.fromNumber(this.embededFont.capHeight),
-        XHeight: PDFNumber.fromNumber(this.embededFont.xHeight),
+        FontName: PDFName.from(embededFont.fontName),
+        Flags: PDFNumber.fromNumber(4 || embededFont.flags), // 32 Nonsymboli 4 symbolic
+        FontBBox: PDFArray.fromArray(embededFont.fontBBox.map((n: number) => PDFNumber.fromNumber(n)), pdfDoc.index),
+        ItalicAngle: PDFNumber.fromNumber(embededFont.italicAngle),
+        Ascent: PDFNumber.fromNumber(embededFont.ascent),
+        Descent: PDFNumber.fromNumber(embededFont.descent),
+        CapHeight: PDFNumber.fromNumber(embededFont.capHeight),
+        XHeight: PDFNumber.fromNumber(embededFont.xHeight),
         StemV: PDFNumber.fromNumber(0), // StemV
-      }, this.embededFont.hasCff ? {
+      }, embededFont.fontCidType === 0 ? {
         FontFile3: pdfDoc.register(fontStream),
       } : {
         FontFile2: pdfDoc.register(fontStream),
@@ -98,12 +77,15 @@ class PDFFontFactory {
     const descendantFontDict = PDFDictionary.from(
       {
         Type: PDFName.from('Font'),
-        Subtype: PDFName.from(this.embededFont.hasCff ? 'CIDFontType0' : 'CIDFontType2'),
-        BaseFont: PDFName.from(this.embededFont.fontName),
+        Subtype: PDFName.from(embededFont.fontCidType === 0 ? 'CIDFontType0' : 'CIDFontType2'),
+        BaseFont: PDFName.from(embededFont.fontName),
+        // TODO would it be possible to evaluate a better value based on font attibutes...
+        DW: PDFNumber.fromNumber(1000),
+        CIDToGIDMap: PDFName.from('Identity'),
         CIDSystemInfo: PDFDictionary.from({
-          Registry: PDFString.fromString('Adobe'),
-          Ordering: PDFString.fromString('Identity'),
-          Supplement: PDFNumber.fromNumber(0),
+          Registry: PDFString.fromString(embededFont.registry),
+          Ordering: PDFString.fromString(embededFont.ordering),
+          Supplement: PDFNumber.fromNumber(embededFont.supplement),
         }, pdfDoc.index),
         // W: widths for the glyphs in the CIDFont - entry example: [ 0 [1400 325 ...] ]
         W: PDFArray.fromArray([
@@ -119,7 +101,7 @@ class PDFFontFactory {
       }, pdfDoc.index), new Uint8Array)
     const widthArrayBytesSize = widthArray.bytesSize
     widthArray.bytesSize = ():number => {
-      this.embededFont.subsetData.widths.forEach((w,i) => widthArray.array[i] = PDFNumber.fromNumber(w))
+      embededFont.widths.forEach((w,i) => widthArray.array[i] = PDFNumber.fromNumber(w))
       return widthArrayBytesSize()
     }
     const fontStreamBytesSize = fontStream.bytesSize
@@ -129,7 +111,7 @@ class PDFFontFactory {
       // TODO fix this uggly dirty piece
       // embededFontInfo.data should be calculated only just before writing the PDF
       fontStream.dictionary.set(PDFName.from('Filter'), PDFName.from('FlateDecode'));
-      const encodedContent = deflate(this.embededFont.subsetData.data)
+      const encodedContent = deflate(embededFont.encode())
       fontStream.dictionary.set('Length', PDFNumber.fromNumber(encodedContent.byteLength))
       fontStream.content = encodedContent
       return fontStreamBytesSize()
@@ -138,7 +120,7 @@ class PDFFontFactory {
     toUnicodeStream.bytesSize = ():number => {
       // TODO fix this uggly dirty pieace
       // embededFontInfo.data should be calculated only just before writing the PDF
-      const CMap = this.embededFont.subsetData.CMap
+      const CMap = embededFont.CMap
           // The Identity-H and Identity-V CMaps may be used to refer to glyphs directly by their CIDs when showing a text string
         /*
           In addition to displaying text, conforming readers sometimes need to determine the information content
@@ -151,11 +133,11 @@ class PDFFontFactory {
         '12 dict begin',
         'begincmap',
         '/CIDSystemInfo',
-        '<< /Registry (Adobe)',
-        '/Ordering (UCS)',
-        '/Supplement 0',
+        `<< /Registry (${CMap.cidSystemInfo.registry})`,
+        `/Ordering (${CMap.cidSystemInfo.ordering})`,
+        `/Supplement ${CMap.cidSystemInfo.supplement}`,
         '>> def',
-        '/CMapName /Adobe-Identity-UCS def',
+        `/CMapName ${CMap.name} def`,
         '/CMapType 2 def',
         '1 begincodespacerange',
         CMap.codespacerange.map((c: number) => `<${uint16ToHex(c)}>`).join(' '),
@@ -172,21 +154,18 @@ class PDFFontFactory {
         'end',
         'end',
       ].join('\n'))
-      // toUnicodeStream.dictionary.set(PDFName.from('Filter'), PDFName.from('FlateDecode'));
-      // const encodedContent = deflate(toUnicodeData)
       const encodedContent = toUnicodeData
       toUnicodeStream.dictionary.set('Length', PDFNumber.fromNumber(encodedContent.length))
       toUnicodeStream.content = encodedContent
       const size = toUnicodeStreamBytesSize()
-      // console.log(String.fromCharCode.apply(null, toUnicodeData))
       return size
     }
 
     const fontDict = PDFDictionary.from({
       Type: PDFName.from('Font'),
-      Subtype: PDFName.from('Type0'),
-      BaseFont: PDFName.from(this.embededFont.fontName),
-      Encoding: PDFName.from('Identity-H'),
+      Subtype: PDFName.from(embededFont.subtype),
+      BaseFont: PDFName.from(embededFont.fontName),
+      Encoding: PDFName.from(embededFont.encoding),
       DescendantFonts: PDFArray.fromArray([pdfDoc.register(descendantFontDict)], pdfDoc.index),
       ToUnicode: pdfDoc.register(toUnicodeStream),
     }, pdfDoc.index)

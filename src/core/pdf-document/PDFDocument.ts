@@ -21,9 +21,7 @@ import {
   PDFPageTree,
 } from 'core/pdf-structures';
 import JPEGXObjectFactory from 'core/pdf-structures/factories/JPEGXObjectFactory';
-import PDFFontEncoder from 'core/pdf-structures/factories/PDFFontEncoder';
-import { IFontFlagOptions } from 'fonts/EmbededFont'
-import { IFont, IEmbededFont } from 'fonts/Font'
+import { EmbededFont, embedableFont } from 'core/pdf-structures/factories/EmbededFont'
 import PDFFontFactory from 'core/pdf-structures/factories/PDFFontFactory';
 import PDFStandardFontFactory from 'core/pdf-structures/factories/PDFStandardFontFactory';
 import PNGXObjectFactory from 'core/pdf-structures/factories/PNGXObjectFactory';
@@ -238,7 +236,7 @@ class PDFDocument {
    */
   embedStandardFont = (
     fontName: IStandard14FontsUnion,
-  ): [PDFIndirectReference<PDFDictionary>, PDFFontEncoder] => {
+  ): [PDFIndirectReference<PDFDictionary>, any] => {
     validate(
       fontName,
       oneOf(...Standard14Fonts),
@@ -251,21 +249,19 @@ class PDFDocument {
   };
 
   /**
-   * Embeds the font contained in the specified `Uint8Array` in the document.
+   * Embeds a font instance in the document.
    *
-   * @param fontData A `Uint8Array` containing an OpenType (`.otf`) or TrueType
-   *                 (`.ttf`) font.
+   * @param font A font instance of either the internal TTF class, from opentype.js or pdfkit
    *
    * @returns A tuple containing (1) the [[PDFIndirectReference]] under which the
-   *          specified font is registered, and (2) a [[PDFFontFactory]] object
+   *          specified font is registered, and (2) a [[EmbededFont]] object
    *          containing font metadata properties and methods.
    */
   embedFont = (
-    font: IFont,
-    fontFlags: IFontFlagOptions = { Nonsymbolic: true },
-  ): [PDFIndirectReference<PDFDictionary>, IEmbededFont] => {
-    const fontFactory = PDFFontFactory.for(font, fontFlags);
-    return [fontFactory.embedFontIn(this), fontFactory.embededFont];
+    font: embedableFont,
+  ): [PDFIndirectReference<PDFDictionary>, EmbededFont] => {
+    const embededFont = PDFFontFactory.for(font);
+    return [PDFFontFactory.embedFontIn(this, embededFont), embededFont];
   };
 
   /**

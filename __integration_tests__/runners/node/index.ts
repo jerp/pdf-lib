@@ -16,12 +16,14 @@ const writePdfToTmp = (pdf: Uint8Array) => {
   return path;
 };
 
-import { TTFFont } from 'fonts/TTFFont'
+import { TTFFont } from 'helpers/TTFFont'
+import { FontkitFont } from 'fontkit'
 const fontkit = require('fontkit')
+import { parse as parseOpenType } from 'opentype.js'
 
-const readFont = (font: string, ttf?: boolean) => ttf ?
-  TTFFont.for(fs.readFileSync(`__integration_tests__/assets/fonts/${font}`)) :
-  fontkit.create(fs.readFileSync(`__integration_tests__/assets/fonts/${font}`))
+const loadTTFFont = (path: string) => TTFFont.for(fs.readFileSync(`__integration_tests__/assets/fonts/${path}`))
+const loadFontKitFont = (path: string) => fontkit.create(fs.readFileSync(`__integration_tests__/assets/fonts/${path}`)) as FontkitFont
+const loadOTFont = (path: string) => parseOpenType(fs.readFileSync(`__integration_tests__/assets/fonts/${path}`).buffer)
 
 const readImage = (image: string) =>
   fs.readFileSync(`__integration_tests__/assets/images/${image}`);
@@ -31,20 +33,21 @@ const readPdf = (pdf: string) => fs.readFileSync(`test-pdfs/pdf/${pdf}`);
 const assets = {
   fonts: {
     ttf: {
-      ubuntu_r: readFont('ubuntu/Ubuntu-R.ttf', true),
-      bio_rhyme_r: readFont('bio_rhyme/BioRhymeExpanded-Regular.ttf', true),
-      press_start_2p_r: readFont('press_start_2p/PressStart2P-Regular.ttf', true),
-      indie_flower_r: readFont('indie_flower/IndieFlower.ttf', true),
-      great_vibes_r: readFont('great_vibes/GreatVibes-Regular.ttf', true),
-      CharisSIL_r: readFont('CharisSIL/CharisSIL-R.ttf', true),
-      CharisSIL_r_FK: readFont('CharisSIL/CharisSIL-R.ttf'),
+      ubuntu_r: loadTTFFont('ubuntu/Ubuntu-R.ttf'),
+      bio_rhyme_r: loadTTFFont('bio_rhyme/BioRhymeExpanded-Regular.ttf'),
+      press_start_2p_r: loadTTFFont('press_start_2p/PressStart2P-Regular.ttf'),
+      indie_flower_r: loadTTFFont('indie_flower/IndieFlower.ttf'),
+      great_vibes_r: loadTTFFont('great_vibes/GreatVibes-Regular.ttf'),
+      CharisSIL_r: loadTTFFont('CharisSIL/CharisSIL-R.ttf'),
+      CharisSIL_r_FK: loadFontKitFont('CharisSIL/CharisSIL-R.ttf'),
     },
     otf: {
-      fantasque_sans_mono_bi: readFont(
+      fantasque_sans_mono_bi: loadOTFont(
         'fantasque/OTF/FantasqueSansMono-BoldItalic.otf',
       ),
-      apple_storm_r: readFont('apple_storm/AppleStormCBo.otf'),
-      hussar_3d_r: readFont('hussar_3d/Hussar3DFour.otf'),
+      apple_storm_r: loadOTFont('apple_storm/AppleStormCBo.otf'),
+      hussar_3d_r: loadOTFont('hussar_3d/Hussar3DFour.otf'),
+      NotoSansCJKsc_Medium: loadOTFont('NotoSansCJKsc/NotoSansCJKsc-Medium.otf'),
     },
   },
   images: {

@@ -26,6 +26,7 @@ import {
 } from '../../src';
 
 import { ITestAssets, ITestKernel } from '../models';
+import { namedEmbededFonts } from 'core/pdf-structures/factories/EmbededFont';
 
 const ipsumLines = [
   'Eligendi est pariatur quidem in non excepturi et.',
@@ -151,7 +152,7 @@ const makePage1ContentStream = (pdfDoc: PDFDocument, size: number) =>
     popGraphicsState(),
   );
 
-const makePage2ContentStream = (pdfDoc: PDFDocument, size: number) =>
+const makePage2ContentStream = (pdfDoc: PDFDocument, size: number, embededFonts: namedEmbededFonts) =>
   pdfDoc.createContentStream(
     drawSquare({
       size,
@@ -162,48 +163,56 @@ const makePage2ContentStream = (pdfDoc: PDFDocument, size: number) =>
       size: 20,
       font: 'Ubuntu-R',
       colorRgb: [101 / 255, 123 / 255, 131 / 255],
+      embededFont: embededFonts['Ubuntu-R'],
     }),
     drawLinesOfText(ipsumLines, {
       y: size - 105,
       size: 25,
       font: 'Fantasque-BI',
       colorRgb: [101 / 255, 123 / 255, 131 / 255],
+      embededFont: embededFonts['Fantasque-BI'],
     }),
     drawLinesOfText(ipsumLines, {
       y: size - 200,
       size: 25,
       font: 'IndieFlower-R',
       colorRgb: [101 / 255, 123 / 255, 131 / 255],
+      embededFont: embededFonts['IndieFlower-R'],
     }),
     drawLinesOfText(ipsumLines, {
       y: size - 300,
       size: 30,
       font: 'GreatVibes-R',
       colorRgb: [101 / 255, 123 / 255, 131 / 255],
+      embededFont: embededFonts['GreatVibes-R'],
     }),
     drawLinesOfText(ipsumLines, {
       y: size - 425,
       size: 25,
       font: 'AppleStorm-R',
       colorRgb: [101 / 255, 123 / 255, 131 / 255],
+      embededFont: embededFonts['AppleStorm-R'],
     }),
     drawLinesOfText(ipsumLines, {
       y: size - 500,
       size: 15,
       font: 'BioRhyme-R',
       colorRgb: [101 / 255, 123 / 255, 131 / 255],
+      embededFont: embededFonts['BioRhyme-R'],
     }),
     drawLinesOfText(ipsumLines, {
       y: size - 575,
       size: 15,
       font: 'PressStart2P-R',
       colorRgb: [101 / 255, 123 / 255, 131 / 255],
+      embededFont: embededFonts['PressStart2P-R'],
     }),
     drawLinesOfText(ipsumLines, {
       y: size - 650,
       size: 25,
       font: 'Hussar3D-R',
       colorRgb: [101 / 255, 123 / 255, 131 / 255],
+      embededFont: embededFonts['Hussar3D-R'],
     }),
   );
 
@@ -265,18 +274,28 @@ const kernel: ITestKernel = (assets: ITestAssets) => {
   // Embed fonts:
   const { ttf, otf } = assets.fonts;
 
-  const [FontUbuntuR] = pdfDoc.embedFont(ttf.ubuntu_r);
-  const [FontBioRhymeR] = pdfDoc.embedFont(ttf.bio_rhyme_r);
-  const [FontPressStart2PR] = pdfDoc.embedFont(ttf.press_start_2p_r);
-  const [FontIndieFlowerR] = pdfDoc.embedFont(ttf.indie_flower_r);
-  const [FontGreatVibesR] = pdfDoc.embedFont(ttf.great_vibes_r);
+  const [FontUbuntuR, eFontUbuntuR] = pdfDoc.embedFont(ttf.ubuntu_r);
+  const [FontBioRhymeR, eFontBioRhymeR] = pdfDoc.embedFont(ttf.bio_rhyme_r);
+  const [FontPressStart2PR, eFontPressStart2PR] = pdfDoc.embedFont(ttf.press_start_2p_r);
+  const [FontIndieFlowerR, eFontIndieFlowerR] = pdfDoc.embedFont(ttf.indie_flower_r);
+  const [FontGreatVibesR, eFontGreatVibesR] = pdfDoc.embedFont(ttf.great_vibes_r);
 
-  const [FontFantasqueBI] = pdfDoc.embedFont(otf.fantasque_sans_mono_bi);
-  const [FontAppleStormR] = pdfDoc.embedFont(otf.apple_storm_r);
-  const [FontHussar3D] = pdfDoc.embedFont(otf.hussar_3d_r);
+  const [FontFantasqueBI, eFontFantasqueBI] = pdfDoc.embedFont(otf.fantasque_sans_mono_bi);
+  const [FontAppleStormR, eFontAppleStormR] = pdfDoc.embedFont(otf.apple_storm_r);
+  const [FontHussar3D, eFontHussar3D] = pdfDoc.embedFont(otf.hussar_3d_r);
 
   const [FontTimesRoman] = pdfDoc.embedStandardFont('Times-Roman');
 
+  const embededFonts: namedEmbededFonts = {
+    'Ubuntu-R': eFontUbuntuR,
+    'BioRhyme-R': eFontBioRhymeR,
+    'PressStart2P-R': eFontPressStart2PR,
+    'IndieFlower-R': eFontIndieFlowerR,
+    'GreatVibes-R': eFontGreatVibesR,
+    'Fantasque-BI': eFontFantasqueBI,
+    'AppleStorm-R': eFontAppleStormR,
+    'Hussar3D-R': eFontHussar3D,
+  }
   // Embed images:
   const { jpg, png } = assets.images;
 
@@ -301,7 +320,7 @@ const kernel: ITestKernel = (assets: ITestAssets) => {
     .addContentStreams(page1ContentStreamRef);
 
   const page2Size = 750;
-  const page2ContentStream = makePage2ContentStream(pdfDoc, page2Size);
+  const page2ContentStream = makePage2ContentStream(pdfDoc, page2Size, embededFonts);
   const page2ContentStreamRef = pdfDoc.register(page2ContentStream);
 
   const page2 = pdfDoc

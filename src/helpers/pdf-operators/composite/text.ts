@@ -15,7 +15,7 @@ import {
   text,
 } from 'helpers/pdf-operators/simple';
 
-import { IEmbededFont } from 'fonts/Font'
+import { EmbededFont } from 'core/pdf-structures/factories/EmbededFont'
 
 /**
  * Options object with named parameters for the [[drawText]] operator helper.
@@ -39,7 +39,7 @@ export interface IDrawTextOptions {
    * the `drawText` operator is applied.
    */
   font: string | PDFName;
-  embededFont: IEmbededFont;
+  embededFont?: EmbededFont;
 
   /**
    * Default value is `12`.
@@ -176,7 +176,7 @@ export interface IDrawLinesOfTextOptions {
    * the `drawLinesOfText` operator is applied.
    */
   font: string | PDFName;
-  embededFont: IEmbededFont;
+  embededFont?: EmbededFont;
   /**
    * Default value is `12`.
    *
