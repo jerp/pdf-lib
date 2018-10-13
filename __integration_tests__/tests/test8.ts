@@ -68,6 +68,7 @@ export default {
     'line 1 prints variations of a: "a à ặ"',
     'line 2 prints "€ ꝝ"',
     'line 3 prints Czeck text "PŮVODNÍ ZPRÁVA"',
-    'line 3 prints Chinses text "쪚\uCAC6"'
+    'line 3 prints Chinese text "쪚\uCAC6"'
   ],
 };
+

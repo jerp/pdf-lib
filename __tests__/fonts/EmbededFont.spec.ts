@@ -15,7 +15,6 @@ import {
   PDFIndirectReference,
 } from '../../src/core/pdf-objects';
 
-const pdfjscore = require('pdfjs-core/index.cjs.js')
 
 const testFontFile = (fontFile) => readFileSync(`${__dirname}/../../__integration_tests__/assets/fonts/${fontFile}`)
 

@@ -5,11 +5,12 @@
 
 import { DataStream } from 'helpers/DataStream';
 import { TTFFont } from 'helpers/TTFFont'
+import { StandardFont } from 'helpers/StandardFont'
 import { FontkitFont } from 'fontkit'
 import { Font as OpentypeJsFont, RenderOptions, Glyph, FontConstructorOptions } from 'opentype.js'
 
-export type embedableFont = TTFFont | FontkitFont | OpentypeJsFont
-export { TTFFont, FontkitFont, OpentypeJsFont }
+export type embedableFont = TTFFont | FontkitFont | OpentypeJsFont | StandardFont
+export { TTFFont, FontkitFont, OpentypeJsFont, StandardFont }
 
 export type namedEmbededFonts = { [index: string]: EmbededFont}
 export { RenderOptions }
@@ -43,9 +44,13 @@ export abstract class EmbededFont {
   static forOpentypeJs(font: OpentypeJsFont): EmbededFont {
     return new EmbededOpentypeJsFont(font)
   }
+  /** creates EmbededFont instance from an StandardFont Font instance */
+  static forStandardFont(font: StandardFont): EmbededFont {
+    return new EmbededStandardFont(font)
+  }
   abstract getAdvanceWidth(text: string, fontSize: number, options?: RenderOptions): number
     /** encode a series of words - no advance consideration */
-  abstract encodeText(text: string, options?: RenderOptions): Uint16Array
+  abstract encodeText(text: string, options?: RenderOptions): Uint16Array | Uint8Array
   constructor(
     protected font: embedableFont,
     postScriptName: string,
@@ -164,6 +169,41 @@ class EmbededTTFFont extends EmbededFont {
     return font.encodeSubset(this.subsetMap)
   }
 }
+
+class EmbededStandardFont extends EmbededFont {
+  protected font: StandardFont
+  constructor(font: StandardFont) {
+    super(
+      font,
+      font.fontName,
+      font.unitsPerEm,
+      font.ascent,
+      font.descent,
+      font.xHeight,
+      font.capHeight,
+      font.lineGap,
+      font.fontBBox,
+      font.isFixedPitch,
+      false,
+      0,
+      font.italicAngle,
+      false,
+    )
+  }
+  getAdvanceWidth(text: string, fontSize: number) {
+    return this.font.getAdvanceWidth(text) * fontSize / this.font.unitsPerEm
+  }
+  encodeText(text: string) {
+    return this.font.encodeText(text)
+  }
+  addGlyph() {
+    return 0 // dummy
+  }
+  encode() {
+    return new Uint8Array() // dummy
+  }
+}
+
 class EmbededFontKitFont extends EmbededFont {
   private subset: any
   constructor(font: FontkitFont) {
